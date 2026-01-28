@@ -1,0 +1,8 @@
+<Layouts.app flash={@flash}>
+  <.header>
+    Edit Simulation {@simulation.id}
+    <:subtitle>Use this form to manage simulation records in your database.</:subtitle>
+  </.header>
+
+  <.simulation_form changeset={@changeset} action={~p"/simulations/#{@simulation}"} return_to={~p"/simulations"} />
+</Layouts.app>
