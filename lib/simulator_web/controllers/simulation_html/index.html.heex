@@ -1,37 +1,68 @@
 <Layouts.app flash={@flash}>
-  <div class="grid grid-cols-2  ">
-    <div>
-      <.header> 
-        Listing Simulations
-        <:actions>
-          <.button href={~p"/simulations/new"}>
-            <.icon name="hero-plus" /> New Simulation
-          </.button>
-        </:actions>
-      </.header>
-    
-      <.table id="simulations" rows={@simulations} row_click={&JS.navigate(~p"/simulations/#{&1}")}>
-        <:col :let={simulation} label="Type">{simulation.type}</:col>
-        <:col :let={simulation} label="Algorithm">{simulation.algorithm}</:col>
-        <:col :let={simulation} label="Swarm">{simulation.swarm}</:col>
-        <:action :let={simulation}>
-          <.link navigate={~p"/execution/#{simulation}"}>Start</.link>
-          <div class="sr-only">
-            <.link navigate={~p"/simulations/#{simulation}"}>Show</.link>
-          </div>
-          <.link navigate={~p"/simulations/#{simulation}/edit"}>edit</.link>
-          <.link href={~p"/simulations/#{simulation}"} method="delete" data-confirm="Are you sure?">
-            Delete
-          </.link>
-        </:action>
-      </.table>
+  <div class="mx-auto max-w-7xl">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">Simulations</h1>
+        <p class="mt-1 text-sm text-base-content/60">Manage and launch your swarm simulations.</p>
+      </div>
     </div>
-    <div class="px-7">
-      <.header>
-        New Simulation`
-        <:subtitle>Use this form to manage simulation records in your database.</:subtitle>
-      </.header>
-      <.simulation_form changeset={@changeset} action={~p"/simulations"} return_to={~p"/simulations"} algorithms={@algorithms} />
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <%!-- Simulation list --%>
+      <div class="lg:col-span-2">
+        <div :if={@simulations == []} class="rounded-box bg-base-200 p-12 text-center">
+          <.icon name="hero-beaker" class="size-12 text-base-content/30 mx-auto" />
+          <p class="mt-4 text-base-content/60 text-sm">No simulations yet. Create one to get started.</p>
+        </div>
+
+        <div :if={@simulations != []} class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div :for={simulation <- @simulations} class="group relative rounded-box bg-base-200 p-5 transition hover:bg-base-300">
+            <.link navigate={~p"/simulations/#{simulation}"} class="absolute inset-0 rounded-box z-0"><span class="sr-only">View</span></.link>
+            <div class="relative z-10 pointer-events-none">
+              <div class="flex items-center justify-between mb-3">
+                <span class="badge badge-primary badge-sm">{simulation.algorithm}</span>
+                <span class="text-xs text-base-content/50">#{simulation.id}</span>
+              </div>
+              <h3 class="font-semibold text-lg">{simulation.type}</h3>
+              <div class="flex items-center gap-2 mt-2 text-sm text-base-content/60">
+                <.icon name="hero-user-group-micro" class="size-4" />
+                <span>{simulation.swarm} agents</span>
+              </div>
+              <div class="flex items-center gap-2 mt-4 pointer-events-auto">
+                <.link
+                  navigate={~p"/execution/#{simulation}"}
+                  class="btn btn-primary btn-sm"
+                >
+                  <.icon name="hero-play-micro" class="size-4" /> Run
+                </.link>
+                <.link
+                  navigate={~p"/simulations/#{simulation}/edit"}
+                  class="btn btn-ghost btn-sm"
+                >
+                  <.icon name="hero-pencil-square-micro" class="size-4" /> Edit
+                </.link>
+                <.link
+                  href={~p"/simulations/#{simulation}"}
+                  method="delete"
+                  data-confirm="Are you sure you want to delete this simulation?"
+                  class="btn btn-ghost btn-sm text-error"
+                >
+                  <.icon name="hero-trash-micro" class="size-4" /> Delete
+                </.link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%!-- New simulation form --%>
+      <div class="lg:col-span-1">
+        <div class="rounded-box bg-base-200 p-6 sticky top-24">
+          <h2 class="text-lg font-semibold mb-1">New Simulation</h2>
+          <p class="text-sm text-base-content/60 mb-5">Configure and create a new swarm simulation.</p>
+          <.simulation_form changeset={@changeset} action={~p"/simulations"} return_to={~p"/simulations"} algorithms={@algorithms} />
+        </div>
+      </div>
     </div>
   </div>
 </Layouts.app>

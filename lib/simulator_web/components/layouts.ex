@@ -58,10 +58,8 @@ defmodule SimulatorWeb.Layouts do
       </div>
     </header>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="space-y-2">
-        {render_slot(@inner_block)}
-      </div>
+    <main class="px-6 py-10 sm:px-10 lg:px-16">
+      {render_slot(@inner_block)}
     </main>
 
     <.flash_group flash={@flash} />

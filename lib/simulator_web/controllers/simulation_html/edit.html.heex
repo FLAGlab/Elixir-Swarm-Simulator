@@ -1,8 +1,17 @@
 <Layouts.app flash={@flash}>
-  <.header>
-    Edit Simulation {@simulation.id}
-    <:subtitle>Use this form to manage simulation records in your database.</:subtitle>
-  </.header>
+  <div class="mx-auto max-w-lg">
+    <div class="flex items-center gap-3 mb-8">
+      <.link navigate={~p"/simulations"} class="btn btn-ghost btn-sm">
+        <.icon name="hero-arrow-left-micro" class="size-4" />
+      </.link>
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">Edit Simulation</h1>
+        <p class="mt-1 text-sm text-base-content/60">Update simulation #{@simulation.id}</p>
+      </div>
+    </div>
 
-  <.simulation_form changeset={@changeset} action={~p"/simulations/#{@simulation}"} return_to={~p"/simulations"} />
+    <div class="rounded-box bg-base-200 p-6">
+      <.simulation_form changeset={@changeset} action={~p"/simulations/#{@simulation}"} return_to={~p"/simulations"} algorithms={@algorithms} />
+    </div>
+  </div>
 </Layouts.app>

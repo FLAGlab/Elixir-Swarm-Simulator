@@ -1,7 +1,7 @@
 <Layouts.flash_group flash={@flash} />
-<div class="px-4 py-10 sm:px-6 sm:py-28 lg:px-8 xl:px-28 xl:py-32">
-  <div class="mx-auto max-w-xl lg:mx-0">
-    <div class="mt-10 flex justify-between items-center">
+<div class="min-h-screen px-6 py-10 sm:px-10 lg:px-16">
+  <div class="mx-auto max-w-7xl">
+    <div class="flex justify-between items-center">
       <h1 class="flex items-center text-sm font-semibold leading-6">
         Elixir Swarm Simulator
         <small class="badge badge-warning badge-sm ml-3">
@@ -10,119 +10,172 @@
       </h1>
       <Layouts.theme_toggle />
     </div>
-    <p class="text-[2rem] mt-4 font-semibold leading-10 tracking-tighter text-balance">
-      Peace of mind from prototype to production.
-    </p>
-    <p class="mt-4 leading-7 text-base-content/70">
-      Build rich, interactive web applications quickly, with less code and fewer moving parts. Join our growing community of developers using Phoenix to craft APIs, HTML5 apps and more, for fun or at scale.
-    </p>
-    <a 
-      href={~p"/simulations"}
-      class="block group relative rounded-box px-6 py-4 text-sm font-semibold leading-6 sm:py-6"
-    >
-      <span class="absolute inset-0 rounded-box bg-primary transition group-hover:bg-base-300 sm:group-hover:scale-105">
-      </span>
-      <span class="relative flex items-center gap-4 sm:flex-col text-info-content">
-        START SIMULATING
-      </span>   
-    </a>
 
-    <p class="text-[2rem] mt-4 font-semibold leading-10 tracking-tighter text-balance">
-      Peace of mind from prototype to production.
-    </p>
-    <p class="mt-4 leading-7 text-base-content/70">
-      Build rich, interactive web applications quickly, with less code and fewer moving parts. Join our growing community of developers using Phoenix to craft APIs, HTML5 apps and more, for fun or at scale.
-    </p>
-    <div class="flex">
-      <div class="w-full sm:w-auto">
-        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
-          <a
-            href="https://github.com/FLAGlab/Elixir-Swarm-Simulator"
-            class="group relative rounded-box px-6 py-4 text-sm font-semibold leading-6 sm:py-6"
-          >
-            <span class="absolute inset-0 rounded-box bg-base-200 transition group-hover:bg-base-300 sm:group-hover:scale-105">
+    <div class="mt-16 text-center">
+      <p class="text-[2.5rem] sm:text-[3.5rem] font-semibold leading-tight tracking-tighter text-balance">
+        Multi-agent swarm simulation, visualized in real time.
+      </p>
+      <p class="mt-6 mx-auto max-w-2xl text-lg leading-8 text-base-content/70">
+        Spawn hundreds of concurrent OTP-powered agents, each running pluggable movement algorithms.
+        Watch them move across a canvas in real time via Phoenix LiveView.
+        Add your own algorithms and observe emergent swarm behavior.
+      </p>
+      <div class="mt-8 flex justify-center">
+        <a
+          href={~p"/simulations"}
+          class="group relative rounded-box px-10 py-4 text-sm font-semibold leading-6 sm:py-6"
+        >
+          <span class="absolute inset-0 rounded-box bg-primary transition group-hover:bg-base-300 sm:group-hover:scale-105">
+          </span>
+          <span class="relative flex items-center gap-4 sm:flex-col text-info-content">
+            START SIMULATING
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-20">
+      <p class="text-[2rem] font-semibold leading-10 tracking-tighter text-center text-balance">
+        Key Features
+      </p>
+      <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <div class="group relative rounded-box px-6 py-6 text-sm leading-6">
+          <span class="absolute inset-0 rounded-box bg-base-200"></span>
+          <span class="relative flex flex-col gap-2">
+            <span class="font-semibold text-base">Real-Time Visualization</span>
+            <span class="text-base-content/70">
+              LiveView + Canvas rendering updates every 30ms. See your swarm move as it happens.
             </span>
-            <span class="relative flex items-center gap-4 sm:flex-col">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" class="h-6 w-6">
-                <path d="m12 4 10-2v18l-10 2V4Z" fill="currentColor" fill-opacity=".15" />
-                <path
-                  d="M12 4 2 2v18l10 2m0-18v18m0-18 10-2v18l-10 2"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              Guides &amp; Docs
-            </span>
-          </a>
-          <a
-            href="https://github.com/FLAGlab/Elixir-Swarm-Simulator"
-            class="group relative rounded-box px-6 py-4 text-sm font-semibold leading-6 sm:py-6"
-          >
-            <span class="absolute inset-0 rounded-box bg-base-200 transition group-hover:bg-base-300 sm:group-hover:scale-105">
-            </span>
-            <span class="relative flex items-center gap-4 sm:flex-col">
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="h-6 w-6">
-                <path
-                  fill="currentColor"
-                  fill-rule="evenodd"
-                  clip-rule="evenodd"
-                  d="M12 0C5.37 0 0 5.506 0 12.303c0 5.445 3.435 10.043 8.205 11.674.6.107.825-.262.825-.585 0-.292-.015-1.261-.015-2.291C6 21.67 5.22 20.346 4.98 19.654c-.135-.354-.72-1.446-1.23-1.738-.42-.23-1.02-.8-.015-.815.945-.015 1.62.892 1.845 1.261 1.08 1.86 2.805 1.338 3.495 1.015.105-.8.42-1.338.765-1.645-2.67-.308-5.46-1.37-5.46-6.075 0-1.338.465-2.446 1.23-3.307-.12-.308-.54-1.569.12-3.26 0 0 1.005-.323 3.3 1.26.96-.276 1.98-.415 3-.415s2.04.139 3 .416c2.295-1.6 3.3-1.261 3.3-1.261.66 1.691.24 2.952.12 3.26.765.861 1.23 1.953 1.23 3.307 0 4.721-2.805 5.767-5.475 6.075.435.384.81 1.122.81 2.276 0 1.645-.015 2.968-.015 3.383 0 .323.225.707.825.585a12.047 12.047 0 0 0 5.919-4.489A12.536 12.536 0 0 0 24 12.304C24 5.505 18.63 0 12 0Z"
-                />
-              </svg>
-              Source Code
-            </span>
-          </a>
-          <a
-            href={"https://github.com/phoenixframework/phoenix/blob/v#{Application.spec(:phoenix, :vsn)}/CHANGELOG.md"}
-            class="group relative rounded-box px-6 py-4 text-sm font-semibold leading-6 sm:py-6"
-          >
-            <span class="absolute inset-0 rounded-box bg-base-200 transition group-hover:bg-base-300 sm:group-hover:scale-105">
-            </span>
-            <span class="relative flex items-center gap-4 sm:flex-col">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" class="h-6 w-6">
-                <path
-                  d="M12 1v6M12 17v6"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="4"
-                  fill="currentColor"
-                  fill-opacity=".15"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              Changelog
-            </span>
-          </a>
+          </span>
         </div>
-        <div class="mt-10 grid grid-cols-1 gap-y-4 text-sm leading-6 text-base-content/80 sm:grid-cols-2">
-          <div>
-            <a
-              href="https://fly.io/docs/elixir/getting-started/"
-              class="group -mx-2 -my-0.5 inline-flex items-center gap-3 rounded-lg px-2 py-0.5 hover:bg-base-200 hover:text-base-content"
-            >
-              <svg
-                viewBox="0 0 20 20"
-                aria-hidden="true"
-                class="h-4 w-4 fill-base-content/40 group-hover:fill-base-content"
-              >
-                <path d="M1 12.5A4.5 4.5 0 005.5 17H15a4 4 0 001.866-7.539 3.504 3.504 0 00-4.504-4.272A4.5 4.5 0 004.06 8.235 4.502 4.502 0 001 12.5z" />
-              </svg>
-              Powered by Elixir and Phoenix
-            </a>
-          </div>
+        <div class="group relative rounded-box px-6 py-6 text-sm leading-6">
+          <span class="absolute inset-0 rounded-box bg-base-200"></span>
+          <span class="relative flex flex-col gap-2">
+            <span class="font-semibold text-base">Pluggable Algorithms</span>
+            <span class="text-base-content/70">
+              RandomWalk, Static, and more. Implement the Algorithm behaviour to add your own.
+            </span>
+          </span>
+        </div>
+        <div class="group relative rounded-box px-6 py-6 text-sm leading-6">
+          <span class="absolute inset-0 rounded-box bg-base-200"></span>
+          <span class="relative flex flex-col gap-2">
+            <span class="font-semibold text-base">OTP-Powered Agents</span>
+            <span class="text-base-content/70">
+              Each agent is a concurrent Elixir process. Scale to hundreds of agents effortlessly.
+            </span>
+          </span>
         </div>
       </div>
+    </div>
+
+    <div class="mt-20 text-center">
+      <p class="text-[2rem] font-semibold leading-10 tracking-tighter text-balance">
+        How It Works
+      </p>
+      <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <div class="flex flex-col items-center gap-2">
+          <span class="text-4xl font-bold text-primary">1</span>
+          <span class="font-semibold">Create</span>
+          <span class="text-base-content/70 text-sm">Pick an algorithm and configure your simulation.</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <span class="text-4xl font-bold text-primary">2</span>
+          <span class="font-semibold">Launch</span>
+          <span class="text-base-content/70 text-sm">Spawn concurrent PointAgent processes.</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <span class="text-4xl font-bold text-primary">3</span>
+          <span class="font-semibold">Watch</span>
+          <span class="text-base-content/70 text-sm">Agents move in real time on the canvas, updated via PubSub every 30ms.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-20">
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <a
+          href="https://github.com/FLAGlab/Elixir-Swarm-Simulator"
+          class="group relative rounded-box px-6 py-6 text-sm font-semibold leading-6"
+        >
+          <span class="absolute inset-0 rounded-box bg-base-200 transition group-hover:bg-base-300 sm:group-hover:scale-105">
+          </span>
+          <span class="relative flex items-center gap-4 sm:flex-col">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="h-6 w-6">
+              <path
+                fill="currentColor"
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M12 0C5.37 0 0 5.506 0 12.303c0 5.445 3.435 10.043 8.205 11.674.6.107.825-.262.825-.585 0-.292-.015-1.261-.015-2.291C6 21.67 5.22 20.346 4.98 19.654c-.135-.354-.72-1.446-1.23-1.738-.42-.23-1.02-.8-.015-.815.945-.015 1.62.892 1.845 1.261 1.08 1.86 2.805 1.338 3.495 1.015.105-.8.42-1.338.765-1.645-2.67-.308-5.46-1.37-5.46-6.075 0-1.338.465-2.446 1.23-3.307-.12-.308-.54-1.569.12-3.26 0 0 1.005-.323 3.3 1.26.96-.276 1.98-.415 3-.415s2.04.139 3 .416c2.295-1.6 3.3-1.261 3.3-1.261.66 1.691.24 2.952.12 3.26.765.861 1.23 1.953 1.23 3.307 0 4.721-2.805 5.767-5.475 6.075.435.384.81 1.122.81 2.276 0 1.645-.015 2.968-.015 3.383 0 .323.225.707.825.585a12.047 12.047 0 0 0 5.919-4.489A12.536 12.536 0 0 0 24 12.304C24 5.505 18.63 0 12 0Z"
+              />
+            </svg>
+            Source Code
+          </span>
+        </a>
+        <a
+          href="https://github.com/FLAGlab/Elixir-Swarm-Simulator/blob/main/README.md"
+          class="group relative rounded-box px-6 py-6 text-sm font-semibold leading-6"
+        >
+          <span class="absolute inset-0 rounded-box bg-base-200 transition group-hover:bg-base-300 sm:group-hover:scale-105">
+          </span>
+          <span class="relative flex items-center gap-4 sm:flex-col">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" class="h-6 w-6">
+              <path d="m12 4 10-2v18l-10 2V4Z" fill="currentColor" fill-opacity=".15" />
+              <path
+                d="M12 4 2 2v18l10 2m0-18v18m0-18 10-2v18l-10 2"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            README
+          </span>
+        </a>
+        <a
+          href="https://github.com/FLAGlab/Elixir-Swarm-Simulator/tree/main/lib/simulator/algorithms"
+          class="group relative rounded-box px-6 py-6 text-sm font-semibold leading-6"
+        >
+          <span class="absolute inset-0 rounded-box bg-base-200 transition group-hover:bg-base-300 sm:group-hover:scale-105">
+          </span>
+          <span class="relative flex items-center gap-4 sm:flex-col">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" class="h-6 w-6">
+              <path
+                d="M12 1v6M12 17v6"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <circle
+                cx="12"
+                cy="12"
+                r="4"
+                fill="currentColor"
+                fill-opacity=".15"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Algorithms
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-10 flex justify-center text-sm leading-6 text-base-content/80">
+      <span class="inline-flex items-center gap-3 rounded-lg px-2 py-0.5">
+        <svg
+          viewBox="0 0 20 20"
+          aria-hidden="true"
+          class="h-4 w-4 fill-base-content/40"
+        >
+          <path d="M1 12.5A4.5 4.5 0 005.5 17H15a4 4 0 001.866-7.539 3.504 3.504 0 00-4.504-4.272A4.5 4.5 0 004.06 8.235 4.502 4.502 0 001 12.5z" />
+        </svg>
+        Powered by Elixir and Phoenix
+      </span>
     </div>
   </div>
 </div>

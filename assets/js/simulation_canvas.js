@@ -12,15 +12,24 @@ export function initSimulationCanvas() {
 
   const channel = socket.channel(`simulation:${simulationId}`, {})
 
+  function getThemeColors() {
+    const style = getComputedStyle(document.documentElement)
+    return {
+      fill: style.getPropertyValue("--color-primary").trim() || "#6366f1",
+      stroke: style.getPropertyValue("--color-secondary").trim() || "#8b5cf6"
+    }
+  }
+
   channel.on("positions", ({positions}) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    ctx.fillStyle = "red"
+    const colors = getThemeColors()
+    ctx.fillStyle = colors.fill
+    ctx.strokeStyle = colors.stroke
+    ctx.lineWidth = 2
     positions.forEach(p => {
       ctx.beginPath()
       ctx.arc(p.x, p.y, 20, 0, 2 * Math.PI)
-      ctx.strokeStyle = "blue"
-      ctx.lineWidth = 2
       ctx.stroke()
       ctx.beginPath()
       ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI)

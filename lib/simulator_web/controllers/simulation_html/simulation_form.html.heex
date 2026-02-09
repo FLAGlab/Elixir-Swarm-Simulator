@@ -1,20 +1,14 @@
-<.form :let={f} for={@changeset} action={@action} class="">
-  <div class="">
-    <.input field={f[:type]} type="text" label="Type" />
-  </div>
-  <div class="">
-    <.input field={f[:swarm]} type="number" label="Swarm" />
-  </div>
-  <div class="">
-    <.input 
-      field={f[:algorithm]} 
-      type="select" 
-      label="Algorithm" 
-      options={@algorithms}
-    />
-  </div>
-  
-  <footer>
+<.form :let={f} for={@changeset} action={@action} class="space-y-4">
+  <.input field={f[:type]} type="text" label="Type" />
+  <.input field={f[:swarm]} type="number" label="Swarm size" />
+  <.input
+    field={f[:algorithm]}
+    type="select"
+    label="Algorithm"
+    options={@algorithms}
+  />
+
+  <footer class="flex items-center gap-3 pt-2">
     <.button variant="primary">Save Simulation</.button>
     <.button :if={@return_to} href={@return_to}>Cancel</.button>
   </footer>

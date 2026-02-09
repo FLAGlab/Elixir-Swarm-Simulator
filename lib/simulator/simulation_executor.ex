@@ -49,8 +49,8 @@ defmodule Simulator.SimulationExcutor do
     {:noreply, state}
   end
 
-  def obtains_agents(%{swarm: cant, algorithm: algorithm}) do
-    for _ <- 1..cant do
+  def obtains_agents(%{swarm: count, algorithm: algorithm}) do
+    for _ <- 1..count do
       {:ok, pid} = PointAgent.start_link(algorithm)
       pid
     end

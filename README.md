@@ -1,37 +1,37 @@
-# 🐝 Elixir Swarm Simulator
+# Elixir Swarm Simulator
 
-Un simulador web interactivo de comportamiento de enjambres (swarm behavior) construido con **Elixir** y el framework **Phoenix**. Este proyecto permite visualizar y experimentar con algoritmos de inteligencia de enjambre en tiempo real.
+An interactive web simulator for swarm behavior built with **Elixir** and the **Phoenix** framework. This project allows you to visualize and experiment with swarm intelligence algorithms in real time.
 
-## 📋 Descripción del Proyecto
+## Project Description
 
-El Elixir Swarm Simulator es una aplicación web moderna que permite simular el comportamiento colectivo de agentes autónomos (como enjambres de abejas, bandadas de aves o cardúmenes de peces). Los usuarios pueden:
+Elixir Swarm Simulator is a modern web application that simulates the collective behavior of autonomous agents (such as bee swarms, bird flocks, or fish schools). Users can:
 
-- **Crear simulaciones personalizadas** con diferentes parámetros
-- **Visualizar en tiempo real** el movimiento y comportamiento de los agentes
-- **Experimentar con algoritmos** de inteligencia artificial y comportamiento emergente
-- **Analizar resultados** mediante estadísticas y métricas en tiempo real
+- **Create custom simulations** with different parameters
+- **Visualize in real time** the movement and behavior of agents
+- **Experiment with algorithms** for artificial intelligence and emergent behavior
+- **Analyze results** through real-time statistics and metrics
 
-## 🚀 Tecnologías Utilizadas
+## Technologies Used
 
-- **Elixir 1.15+**: Lenguaje funcional con soporte nativo para concurrencia
-- **Phoenix 1.8.1**: Framework web moderno y escalable
-- **Phoenix LiveView**: Interactividad en tiempo real sin necesidad de JavaScript complejo
-- **Ecto + SQLite3**: Persistencia de datos
-- **Tailwind CSS 4**: Diseño responsive y moderno
-- **Heroicons**: Librería de iconos
-- **Req**: Cliente HTTP para integraciones
+- **Elixir 1.15+**: Functional language with native concurrency support
+- **Phoenix 1.8.1**: Modern and scalable web framework
+- **Phoenix LiveView**: Real-time interactivity without complex JavaScript
+- **Ecto + SQLite3**: Data persistence
+- **Tailwind CSS 4**: Responsive and modern design
+- **Heroicons**: Icon library
+- **Req**: HTTP client for integrations
 
-## 📦 Requisitos Previos
+## Prerequisites
 
-Antes de empezar, asegúrate de tener instalado:
+Before getting started, make sure you have installed:
 
-- **Elixir 1.15 o superior**
-- **Erlang/OTP 26+** (incluido con Elixir)
-- **Node.js 18+** (para compilar assets)
-- **SQLite3** (incluido en la mayoría de sistemas)
+- **Elixir 1.15 or higher**
+- **Erlang/OTP 26+** (included with Elixir)
+- **Node.js 18+** (for compiling assets)
+- **SQLite3** (included in most systems)
 - **Git**
 
-Para verificar tu instalación:
+To verify your installation:
 
 ```bash
 elixir --version
@@ -39,180 +39,180 @@ erl -version
 node --version
 ```
 
-## 🛠️ Instalación y Configuración
+## Installation and Setup
 
-### 1. Clonar el Repositorio
+### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
 cd Elixir-Swarm-Simulator
 ```
 
-### 2. Instalar Dependencias
+### 2. Install Dependencies
 
-Ejecuta el comando de setup que configura automáticamente el proyecto:
+Run the setup command that automatically configures the project:
 
 ```bash
 mix setup
 ```
 
-Este comando realiza:
-- Descarga e instala todas las dependencias con `mix deps.get`
-- Configura la base de datos con `mix ecto.setup`
-- Compila los assets (CSS, JS) con `mix assets.build`
+This command performs:
+- Downloads and installs all dependencies with `mix deps.get`
+- Sets up the database with `mix ecto.setup`
+- Compiles the assets (CSS, JS) with `mix assets.build`
 
-### 3. Iniciar el Servidor
+### 3. Start the Server
 
 ```bash
 mix phx.server
 ```
 
-O si prefieres usar IEx (Elixir interactive shell):
+Or if you prefer using IEx (Elixir interactive shell):
 
 ```bash
 iex -S mix phx.server
 ```
 
-## 🌐 Accediendo a la Aplicación
+## Accessing the Application
 
-Una vez iniciado el servidor, abre tu navegador y visita:
+Once the server is started, open your browser and visit:
 
 ```
 http://localhost:4000
 ```
 
-La aplicación está lista para usar. No requiere autenticación inicial.
+The application is ready to use. No initial authentication is required.
 
-## 📚 Estructura del Proyecto
+## Project Structure
 
 ```
 ├── lib/
-│   ├── simulator/              # Lógica de negocio (Elixir puro)
-│   │   └── agents/             # Módulos de simulación de agentes
-│   └── simulator_web/          # Componentes web
-│       ├── live/               # Phoenix LiveViews (UI interactiva)
-│       ├── components/         # Componentes reutilizables
-│       └── router.ex           # Rutas HTTP
+│   ├── simulator/              # Business logic (pure Elixir)
+│   │   └── agents/             # Agent simulation modules
+│   └── simulator_web/          # Web components
+│       ├── live/               # Phoenix LiveViews (interactive UI)
+│       ├── components/         # Reusable components
+│       └── router.ex           # HTTP routes
 ├── priv/
-│   └── repo/                   # Migraciones de base de datos
+│   └── repo/                   # Database migrations
 ├── assets/
-│   ├── css/                    # Estilos Tailwind CSS
+│   ├── css/                    # Tailwind CSS styles
 │   └── js/                     # JavaScript/TypeScript
-├── test/                       # Suite de pruebas
-├── config/                     # Configuración del proyecto
-└── mix.exs                     # Dependencias y configuración
+├── test/                       # Test suite
+├── config/                     # Project configuration
+└── mix.exs                     # Dependencies and configuration
 ```
 
-## 🎮 Características Principales
+## Main Features
 
-### Simulaciones en Tiempo Real
-- Visualización interactiva de agentes en movimiento
-- Múltiples algoritmos de comportamiento disponibles
-- Ajuste de parámetros en vivo sin reiniciar
+### Real-Time Simulations
+- Interactive visualization of agents in motion
+- Multiple behavior algorithms available
+- Live parameter adjustment without restarting
 
-### Persistencia de Datos
-- Base de datos SQLite3 integrada
-- Guardar y cargar configuraciones de simulaciones
-- Historial de experimentos
+### Data Persistence
+- Integrated SQLite3 database
+- Save and load simulation configurations
+- Experiment history
 
-### Interfaz Moderna
-- Diseño responsive con Tailwind CSS
-- Componentes interactivos con Phoenix LiveView
-- Experiencia de usuario fluida y sin recargas
+### Modern Interface
+- Responsive design with Tailwind CSS
+- Interactive components with Phoenix LiveView
+- Smooth user experience without page reloads
 
-### Escalabilidad
-- Arquitectura basada en procesos de Erlang/OTP
-- Soporte para múltiples simulaciones concurrentes
-- Optimizado para alto rendimiento
+### Scalability
+- Architecture based on Erlang/OTP processes
+- Support for multiple concurrent simulations
+- Optimized for high performance
 
-## 🧪 Pruebas
+## Testing
 
-Ejecutar todas las pruebas:
+Run all tests:
 
 ```bash
 mix test
 ```
 
-Ejecutar pruebas de un archivo específico:
+Run tests for a specific file:
 
 ```bash
 mix test test/simulator_web/live/some_live_test.exs
 ```
 
-Ejecutar solo las pruebas fallidas:
+Run only previously failed tests:
 
 ```bash
 mix test --failed
 ```
 
-## 🔧 Comandos Útiles
+## Useful Commands
 
-| Comando | Descripción |
+| Command | Description |
 |---------|-------------|
-| `mix setup` | Instalación inicial y configuración |
-| `mix phx.server` | Inicia el servidor de desarrollo |
-| `mix test` | Ejecuta la suite de pruebas |
-| `mix format` | Formatea el código automáticamente |
-| `mix precommit` | Ejecuta linters y pruebas (uso antes de commit) |
-| `mix ecto.setup` | Configura la base de datos |
-| `mix ecto.reset` | Reinicia la base de datos |
-| `mix phx.gen.live` | Genera un nuevo LiveView (scaffolding) |
+| `mix setup` | Initial installation and setup |
+| `mix phx.server` | Start the development server |
+| `mix test` | Run the test suite |
+| `mix format` | Automatically format code |
+| `mix precommit` | Run linters and tests (use before committing) |
+| `mix ecto.setup` | Set up the database |
+| `mix ecto.reset` | Reset the database |
+| `mix phx.gen.live` | Generate a new LiveView (scaffolding) |
 
-## 📝 Configuración
+## Configuration
 
-La configuración se encuentra en `config/`:
+Configuration files are located in `config/`:
 
-- **config.exs**: Configuración global
-- **dev.exs**: Configuración de desarrollo
-- **prod.exs**: Configuración de producción
-- **test.exs**: Configuración de pruebas
-- **runtime.exs**: Configuración en tiempo de ejecución
+- **config.exs**: Global configuration
+- **dev.exs**: Development configuration
+- **prod.exs**: Production configuration
+- **test.exs**: Test configuration
+- **runtime.exs**: Runtime configuration
 
-## 🌍 Despliegue en Producción
+## Production Deployment
 
-Para más información sobre opciones de despliegue:
+For more information on deployment options:
 
-- [Guías de Despliegue Phoenix](https://hexdocs.pm/phoenix/deployment.html)
-- [Despliegue con Fly.io](https://hexdocs.pm/phoenix/fly.html)
-- [Despliegue con Heroku](https://hexdocs.pm/phoenix_heroku/installation.html)
+- [Phoenix Deployment Guides](https://hexdocs.pm/phoenix/deployment.html)
+- [Deploy with Fly.io](https://hexdocs.pm/phoenix/fly.html)
+- [Deploy with Heroku](https://hexdocs.pm/phoenix_heroku/installation.html)
 
-## 📖 Recursos y Documentación
+## Resources and Documentation
 
-### Documentación Oficial
+### Official Documentation
 - [Phoenix Documentation](https://hexdocs.pm/phoenix/overview.html)
 - [Phoenix LiveView Guide](https://hexdocs.pm/phoenix_live_view/welcome.html)
 - [Elixir Documentation](https://elixir-lang.org/docs.html)
 - [Ecto Documentation](https://hexdocs.pm/ecto/Ecto.html)
 
-### Comunidad
+### Community
 - [Elixir Forum](https://elixirforum.com/c/phoenix-forum)
 - [Elixir Community](https://elixir-lang.org/community)
 - [Discord Elixir/Erlang](https://discord.gg/elixir)
 
-## 🤝 Contribuciones
+## Contributing
 
-Las contribuciones son bienvenidas. Por favor:
+Contributions are welcome. Please:
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+1. Fork the project
+2. Create a branch for your feature (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 📋 Pautas del Proyecto
+## Project Guidelines
 
-Ver [AGENTS.md](AGENTS.md) para pautas de desarrollo, convenciones de código y estándares de arquitectura.
+See [AGENTS.md](AGENTS.md) for development guidelines, code conventions, and architecture standards.
 
-## 📄 Licencia
+## License
 
-Este proyecto está bajo licencia. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+This project is licensed. See the [LICENSE](LICENSE) file for details.
 
-## 👤 Autor
+## Author
 
-Proyecto desarrollado como parte de investigación en inteligencia de enjambre y simulación multiagente.
+Project developed as part of research in swarm intelligence and multi-agent simulation.
 
 ---
 
-**¿Problemas o Preguntas?**
+**Issues or Questions?**
 
-Si encuentras algún issue o tienes preguntas, por favor abre una issue en el repositorio.
+If you find any issues or have questions, please open an issue in the repository.
