@@ -1,3 +1,5 @@
+import {initSimulationCanvas} from "./simulation_canvas"
+
 // If you want to use Phoenix channels, run `mix help phx.gen.channel`
 // to get started and then uncomment the line below.
 // import "./user_socket.js"
@@ -82,44 +84,5 @@ if (process.env.NODE_ENV === "development") {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const canvas = document.getElementById("miCanvas");
-  const ctx = canvas?.getContext("2d");
-  const contenedor = document.getElementById("contenedor");
-
-
-  if (!canvas || !ctx ) return;
-  function dibujar(puntos) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const radio = 20;
-    
-    // Dibujar puntos
-    ctx.fillStyle = "red";
-    puntos.forEach(p => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, radio, 0, 2 * Math.PI);
-      ctx.strokeStyle = 'blue';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI);
-      ctx.fill();
-    });
-  }
-
-  // Función para leer los datos actuales
-  const leerDatos = () => {
-    try {
-      const puntos = JSON.parse(canvas.dataset.puntos);
-      dibujar(puntos);
-    } catch (e) {
-      console.error("Error leyendo datos del JSON:", e);
-    }
-  };
-
-  // Dibujar la primera vez
-  leerDatos();
-
-  // Observar cambios en el contenido del script JSON
-  const observer = new MutationObserver(() => leerDatos());
-  observer.observe(contenedor, { childList: true });
-});
+  initSimulationCanvas()
+})

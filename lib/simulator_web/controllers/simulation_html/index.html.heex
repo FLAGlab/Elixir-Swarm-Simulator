@@ -15,7 +15,7 @@
         <:col :let={simulation} label="Algorithm">{simulation.algorithm}</:col>
         <:col :let={simulation} label="Swarm">{simulation.swarm}</:col>
         <:action :let={simulation}>
-          <.link navigate={~p"/execution_live/#{simulation}"}>Start</.link>
+          <.link navigate={~p"/execution/#{simulation}"}>Start</.link>
           <div class="sr-only">
             <.link navigate={~p"/simulations/#{simulation}"}>Show</.link>
           </div>
@@ -31,7 +31,7 @@
         New Simulation`
         <:subtitle>Use this form to manage simulation records in your database.</:subtitle>
       </.header>
-      <.simulation_form changeset={@changeset} action={~p"/simulations"} return_to={~p"/simulations"} />
+      <.simulation_form changeset={@changeset} action={~p"/simulations"} return_to={~p"/simulations"} algorithms={@algorithms} />
     </div>
   </div>
 </Layouts.app>

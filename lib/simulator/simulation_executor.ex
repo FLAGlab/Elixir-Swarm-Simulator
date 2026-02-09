@@ -20,7 +20,7 @@ defmodule Simulator.SimulationExcutor do
     Logger.info("SimulationExcutor: init excution #{simulation.type}")
 
     new_state = state
-    |> Map.put(:agents, obtains_agents(state.simulation.swarm))
+    |> Map.put(:agents, obtains_agents(state.simulation))
 
     {:ok, new_state}
   end
@@ -49,9 +49,9 @@ defmodule Simulator.SimulationExcutor do
     {:noreply, state}
   end
 
-  def obtains_agents(cant) do
+  def obtains_agents(%{swarm: cant, algorithm: algorithm}) do
     for _ <- 1..cant do
-      {:ok, pid} = PointAgent.start_link()
+      {:ok, pid} = PointAgent.start_link(algorithm)
       pid
     end
   end

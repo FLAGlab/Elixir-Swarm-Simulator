@@ -1,13 +1,21 @@
 defmodule PointAgent do
+  alias Simulator.Algorithms
   @update_interval 30
 
   # Public API -----------------------------------------------------
 
-  def start_link() do
+  def start_link(algo) do
     {:ok, pid} = Agent.start_link(fn ->
-       %{
-        x: 255,
-        y: 255
+      %{
+        position: %{
+          x: 255,
+          y: 255
+        },
+        algorithm: Algorithms.get_algorithm(algo),
+        space: %{
+          width: 500,
+          height: 500
+        }
       }
     end)
 
@@ -17,7 +25,9 @@ defmodule PointAgent do
     {:ok, pid}
   end
 
-  def get_position(pid), do: Agent.get(pid, fn state -> state end)
+  def get_position(pid), do: Agent.get(pid, fn state ->
+    state.position
+  end)
 
 
   # Controller Process --------------------------------------------
@@ -32,32 +42,14 @@ defmodule PointAgent do
   defp loop(agent_pid) do
     receive do
       :tick ->
-        Agent.update(agent_pid, fn st ->
-          update_position(st)
+        Agent.update(agent_pid, fn state ->
+          new_position = state.algorithm.update_position(state)
+          %{state | position: new_position}
         end)
 
         Process.send_after(self(), :tick, @update_interval)
         loop(agent_pid)
-
-      {:set_direction, {dx, dy}} ->
-        Agent.update(agent_pid, fn st -> %{st | dx: dx, dy: dy} end)
-        loop(agent_pid)
     end
   end
 
-  def update_position(%{x: x, y: y}) do
-    valor_x = clamp(x + Enum.random(-5..5), 0, 500)
-    valor_y = clamp(y + Enum.random(-5..5), 0, 500)
-    new_position = %{x: valor_x, y: valor_y}
-
-    new_position
-  end
-
-  def clamp(numero, cota_inferior, cota_superior) do
-    cond do
-      numero < cota_inferior -> cota_inferior
-      numero > cota_superior -> cota_superior
-      true -> numero
-    end
-  end
 end

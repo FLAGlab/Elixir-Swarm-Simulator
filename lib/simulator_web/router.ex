@@ -20,7 +20,7 @@ defmodule SimulatorWeb.Router do
     get "/", PageController, :home
     resources "/simulations", SimulationController
 
-    live "/execution_live/:id", ExecutionByIdLive.Index, :index
+    get "/execution/:id", ExecutionController, :show
   end
 
   # Other scopes may use custom stacks.
