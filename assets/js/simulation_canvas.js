@@ -1,16 +1,33 @@
 import {Socket} from "phoenix"
 
+let currentSocket = null
+let currentChannel = null
+
 export function initSimulationCanvas() {
   const canvas = document.getElementById("simulation-canvas")
   if (!canvas) return
 
+  // Avoid duplicate connections if called multiple times
+  if (canvas.dataset.initialized) return
+  canvas.dataset.initialized = "true"
+
+  // Clean up previous connection if navigating between executions
+  if (currentChannel) {
+    currentChannel.leave()
+    currentChannel = null
+  }
+  if (currentSocket) {
+    currentSocket.disconnect()
+    currentSocket = null
+  }
+
   const ctx = canvas.getContext("2d")
   const simulationId = canvas.dataset.simulationId
 
-  const socket = new Socket("/socket", {})
-  socket.connect()
+  currentSocket = new Socket("/socket", {})
+  currentSocket.connect()
 
-  const channel = socket.channel(`simulation:${simulationId}`, {})
+  currentChannel = currentSocket.channel(`simulation:${simulationId}`, {})
 
   function getThemeColors() {
     const style = getComputedStyle(document.documentElement)
@@ -20,7 +37,7 @@ export function initSimulationCanvas() {
     }
   }
 
-  channel.on("positions", ({positions}) => {
+  currentChannel.on("positions", ({positions}) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
     const colors = getThemeColors()
@@ -37,7 +54,7 @@ export function initSimulationCanvas() {
     })
   })
 
-  channel.join()
+  currentChannel.join()
     .receive("ok", () => console.log("Joined simulation channel"))
     .receive("error", ({reason}) => console.error("Failed to join", reason))
 }

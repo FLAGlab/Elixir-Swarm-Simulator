@@ -21,6 +21,7 @@
             <div class="relative z-10 pointer-events-none">
               <div class="flex items-center justify-between mb-3">
                 <span class="badge badge-primary badge-sm">{simulation.algorithm}</span>
+                <span class="badge badge-secondary badge-sm">{simulation.map}</span>
                 <span class="text-xs text-base-content/50">#{simulation.id}</span>
               </div>
               <h3 class="font-semibold text-lg">{simulation.type}</h3>
@@ -60,7 +61,7 @@
         <div class="rounded-box bg-base-200 p-6 sticky top-24">
           <h2 class="text-lg font-semibold mb-1">New Simulation</h2>
           <p class="text-sm text-base-content/60 mb-5">Configure and create a new swarm simulation.</p>
-          <.simulation_form changeset={@changeset} action={~p"/simulations"} return_to={~p"/simulations"} algorithms={@algorithms} />
+          <.simulation_form changeset={@changeset} action={~p"/simulations"} return_to={~p"/simulations"} algorithms={@algorithms} maps={@maps} />
         </div>
       </div>
     </div>

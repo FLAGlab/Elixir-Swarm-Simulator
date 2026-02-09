@@ -6,6 +6,7 @@ defmodule Simulator.Simulations.Simulation do
     field :type, :string
     field :algorithm, :string
     field :swarm, :integer
+    field :map, :string, default: "clean"
 
     timestamps(type: :utc_datetime)
   end
@@ -13,7 +14,7 @@ defmodule Simulator.Simulations.Simulation do
   @doc false
   def changeset(simulation, attrs) do
     simulation
-    |> cast(attrs, [:type, :algorithm, :swarm])
-    |> validate_required([:type, :algorithm, :swarm])
+    |> cast(attrs, [:type, :algorithm, :swarm, :map])
+    |> validate_required([:type, :algorithm, :swarm, :map])
   end
 end

@@ -5,6 +5,6 @@ defmodule SimulatorWeb.ExecutionController do
 
   def show(conn, %{"id" => id}) do
     simulation = Simulations.get_simulation!(id)
-    render(conn, :show, simulation: simulation)
+    render(conn, :show, simulation: simulation, version: "1.0.0")
   end
 end

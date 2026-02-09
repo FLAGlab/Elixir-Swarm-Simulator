@@ -1,0 +1,14 @@
+defmodule Simulator.Maps.CleanMap do
+  @moduledoc """
+  A clean, empty map with no structures.
+  """
+
+  @behaviour Simulator.Map
+
+  alias Simulator.Maps.MapParams
+
+  @impl true
+  def get_paramethers(_opts \\ %{}) do
+    %MapParams{width: 500, height: 500, structures: []}
+  end
+end

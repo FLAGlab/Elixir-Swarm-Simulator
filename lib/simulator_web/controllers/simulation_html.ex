@@ -13,6 +13,7 @@ defmodule SimulatorWeb.SimulationHTML do
   attr :action, :string, required: true
   attr :return_to, :string, default: nil
   attr :algorithms, :list, default: []
+  attr :maps, :list, default: []
 
   def simulation_form(assigns)
 end

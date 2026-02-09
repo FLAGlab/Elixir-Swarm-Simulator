@@ -86,3 +86,8 @@ if (process.env.NODE_ENV === "development") {
 document.addEventListener("DOMContentLoaded", () => {
   initSimulationCanvas()
 })
+
+// Re-init canvas after LiveView client-side navigation
+window.addEventListener("phx:page-loading-stop", () => {
+  initSimulationCanvas()
+})

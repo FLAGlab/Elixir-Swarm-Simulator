@@ -34,27 +34,23 @@ defmodule SimulatorWeb.Layouts do
   slot :inner_block, required: true
 
   def app(assigns) do
+    assigns = assign(assigns, Simulator.AppMetadata.all())
+
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
+    <header class="px-6 py-4 sm:px-10 lg:px-16">
+      <div class="mx-auto max-w-7xl flex justify-between items-center">
+        <a href="/" class="flex items-center gap-2 text-sm font-semibold leading-6">
+          {@app_name}
+          <small class="badge badge-warning badge-sm">
+            v{@app_version}
+          </small>
         </a>
-      </div>
-
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <h1 class="text-lg font-semibold">Simulator</h1>
-        </a>
-      </div>
-
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <.theme_toggle />
-          </li>
-        </ul>
+        <div class="flex items-center gap-4">
+          <a href={~p"/simulations"} class="text-sm font-semibold leading-6 hover:text-primary transition">
+            Simulations
+          </a>
+          <.theme_toggle />
+        </div>
       </div>
     </header>
 

@@ -8,6 +8,7 @@ defmodule SimulatorWeb.Router do
     plug :put_root_layout, html: {SimulatorWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug SimulatorWeb.Plugs.AppMetadata
   end
 
   pipeline :api do
