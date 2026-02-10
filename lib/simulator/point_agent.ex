@@ -1,10 +1,12 @@
 defmodule PointAgent do
   alias Simulator.Algorithms
+  alias Simulator.Maps
   @update_interval 30
 
   # Public API -----------------------------------------------------
 
-  def start_link(algo) do
+  def start_link(algo, map) do
+    IO.inspect({algo, map}, label: "PointAgent: starting with algo and map")
     {:ok, pid} = Agent.start_link(fn ->
       %{
         position: %{
@@ -12,10 +14,7 @@ defmodule PointAgent do
           y: 255
         },
         algorithm: Algorithms.get_algorithm(algo),
-        space: %{
-          width: 500,
-          height: 500
-        }
+        map: Maps.get_map(map).get_paramethers()
       }
     end)
 

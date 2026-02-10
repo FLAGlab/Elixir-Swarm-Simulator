@@ -3,11 +3,12 @@ defmodule Simulator.Maps do
   Centralized map management.
   """
 
-  alias Simulator.Maps.{CleanMap, CityMap}
+  alias Simulator.Maps.{CleanMap, CityMap, BigCleanMap}
 
   @available_maps %{
     "clean" => CleanMap,
-    "city" => CityMap
+    "city" => CityMap,
+    "big_clean" => BigCleanMap
   }
 
   @spec get_map(String.t()) :: module() | nil

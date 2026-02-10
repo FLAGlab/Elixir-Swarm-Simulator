@@ -3,9 +3,9 @@ defmodule Simulator.Algorithms.RandomWalk do
   @behaviour Simulator.Algorithm
 
   @impl true
-  def update_position(%{position: position, space: space}) do
-    new_x = clamp(position.x + Enum.random(-5..5), 0, space.width)
-    new_y = clamp(position.y + Enum.random(-5..5), 0, space.height)
+  def update_position(%{position: position, map: map}) do
+    new_x = clamp(position.x + Enum.random(-5..5), 0, map.width)
+    new_y = clamp(position.y + Enum.random(-5..5), 0, map.height)
 
     %{position | x: new_x, y: new_y}
   end
