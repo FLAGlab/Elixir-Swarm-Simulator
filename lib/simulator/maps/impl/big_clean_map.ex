@@ -1,6 +1,6 @@
 defmodule Simulator.Maps.BigCleanMap do
   @moduledoc """
-  A clean, empty map with no structures.
+  A large clean map (1000x500) with no structures.
   """
 
   @behaviour Simulator.Map

@@ -1,6 +1,6 @@
 defmodule Simulator.Maps.CityMap do
   @moduledoc """
-  A clean, empty map with no structures.
+  A city-style map (500x500) with no structures yet.
   """
 
   @behaviour Simulator.Map

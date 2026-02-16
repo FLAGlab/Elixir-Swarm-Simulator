@@ -9,17 +9,15 @@ Elixir Swarm Simulator is a modern web application that simulates the collective
 - **Create custom simulations** with different parameters
 - **Visualize in real time** the movement and behavior of agents
 - **Experiment with algorithms** for artificial intelligence and emergent behavior
-- **Analyze results** through real-time statistics and metrics
 
 ## Technologies Used
 
 - **Elixir 1.15+**: Functional language with native concurrency support
 - **Phoenix 1.8.1**: Modern and scalable web framework
-- **Phoenix LiveView**: Real-time interactivity without complex JavaScript
+- **Phoenix Channels / WebSockets**: Real-time position broadcasting
 - **Ecto + SQLite3**: Data persistence
 - **Tailwind CSS 4**: Responsive and modern design
 - **Heroicons**: Icon library
-- **Req**: HTTP client for integrations
 
 ## Prerequisites
 
@@ -73,57 +71,149 @@ Or if you prefer using IEx (Elixir interactive shell):
 iex -S mix phx.server
 ```
 
-## Accessing the Application
+Visit [`http://localhost:4000`](http://localhost:4000) once the server is started.
 
-Once the server is started, open your browser and visit:
-
-```
-http://localhost:4000
-```
-
-The application is ready to use. No initial authentication is required.
-
-## Project Structure
+## Project Architecture
 
 ```
 ├── lib/
-│   ├── simulator/              # Business logic (pure Elixir)
-│   │   └── agents/             # Agent simulation modules
-│   └── simulator_web/          # Web components
-│       ├── live/               # Phoenix LiveViews (interactive UI)
-│       ├── components/         # Reusable components
-│       └── router.ex           # HTTP routes
-├── priv/
-│   └── repo/                   # Database migrations
+│   ├── simulator/                    # Core domain logic
+│   │   ├── point_agent.ex            # Agent process (position + algorithm)
+│   │   ├── simulation_executor.ex    # GenServer managing one execution
+│   │   ├── simulation_manager.ex     # GenServer tracking all executions
+│   │   ├── simulations.ex            # Ecto CRUD context
+│   │   ├── simulations/
+│   │   │   └── simulation.ex         # Simulation schema (type, algorithm, swarm, map)
+│   │   ├── algorithms/
+│   │   │   ├── algorithm.ex          # Algorithm behaviour
+│   │   │   ├── algorithms.ex         # Algorithm registry
+│   │   │   └── impl/                 # Algorithm implementations
+│   │   │       ├── random_walk.ex    # Random walk movement
+│   │   │       └── static.ex         # No movement
+│   │   └── maps/
+│   │       ├── map.ex                # Map behaviour
+│   │       ├── maps.ex               # Map registry
+│   │       ├── map_params.ex         # MapParams struct (width, height, structures)
+│   │       └── impl/                 # Map implementations
+│   │           ├── clean_map.ex      # 500×500 empty map
+│   │           ├── clean_city.ex     # 500×500 city map
+│   │           └── big_clean_map.ex  # 1000×500 empty map
+│   └── simulator_web/               # Web layer
+│       ├── router.ex                 # HTTP routes
+│       ├── channels/
+│       │   ├── user_socket.ex        # WebSocket endpoint
+│       │   └── simulation_channel.ex # Real-time position broadcasting
+│       ├── controllers/
+│       │   ├── simulation_controller.ex  # CRUD at /simulations
+│       │   └── execution_controller.ex   # Execution view at /execution/:id
+│       └── components/               # Reusable UI components
 ├── assets/
-│   ├── css/                    # Tailwind CSS styles
-│   └── js/                     # JavaScript/TypeScript
-├── test/                       # Test suite
-├── config/                     # Project configuration
-└── mix.exs                     # Dependencies and configuration
+│   ├── css/                          # Tailwind CSS styles
+│   └── js/                           # JavaScript (Canvas, WebSocket client)
+├── priv/
+│   └── repo/                         # Database migrations
+├── test/                             # Test suite
+├── config/                           # Project configuration
+└── mix.exs                           # Dependencies and project config
 ```
 
-## Main Features
+## How a Simulation Works
 
-### Real-Time Simulations
-- Interactive visualization of agents in motion
-- Multiple behavior algorithms available
-- Live parameter adjustment without restarting
+The simulation system is built on Erlang/OTP processes communicating through GenServers and Phoenix Channels. Below is the complete data flow:
 
-### Data Persistence
-- Integrated SQLite3 database
-- Save and load simulation configurations
-- Experiment history
+### 1. Simulation Configuration (CRUD)
 
-### Modern Interface
-- Responsive design with Tailwind CSS
-- Interactive components with Phoenix LiveView
-- Smooth user experience without page reloads
+The user creates a simulation record through the web interface at `/simulations`. Each simulation has:
 
-### Scalability
-- Architecture based on Erlang/OTP processes
-- Support for multiple concurrent simulations
-- Optimized for high performance
+| Field       | Description                                     |
+|-------------|------------------------------------------------|
+| `type`      | A name/label for the simulation                |
+| `algorithm` | Movement algorithm key (e.g. `"random_walk"`)  |
+| `swarm`     | Number of agents to spawn                       |
+| `map`       | Map key (e.g. `"clean"`, `"city"`, `"big_clean"`) |
+
+These records are persisted in SQLite via Ecto.
+
+### 2. Execution Startup
+
+When the user navigates to `/execution/:id`:
+
+```
+Browser                    Server
+  │                          │
+  ├─ GET /execution/:id ────►│  ExecutionController loads simulation + map params
+  │◄──── HTML page ──────────│  (renders canvas with correct dimensions)
+  │                          │
+  ├─ WebSocket connect ─────►│  UserSocket accepts connection
+  ├─ join "simulation:<id>" ►│  SimulationChannel.join/3
+  │                          │
+```
+
+### 3. Process Architecture
+
+On channel join, the following OTP process tree is created:
+
+```
+SimulationManager (singleton GenServer)
+  │
+  ├── tracks: %{simulation_id => executor_pid}
+  │
+  └── SimulationExcutor (GenServer, one per simulation)
+        │
+        ├── PointAgent 1 (Agent + linked tick process)
+        ├── PointAgent 2 (Agent + linked tick process)
+        ├── ...
+        └── PointAgent N (Agent + linked tick process)
+```
+
+- **SimulationManager** — Prevents duplicate executions per simulation ID. Delegates `start_excution` and `get_positions` calls to the appropriate executor.
+- **SimulationExcutor** — Spawns N `PointAgent` processes on init. Registered under `simulation.type` as its process name.
+- **PointAgent** — Each agent is an `Agent` process holding `%{position, algorithm, map}`. A `spawn_link`-ed process sends `:tick` every `@update_interval` ms, calling `algorithm.update_position(state)` to compute the next position.
+
+### 4. Real-Time Position Loop
+
+After the execution starts, `SimulationChannel` enters a tick loop:
+
+```
+SimulationChannel                SimulationManager           SimulationExcutor        PointAgents
+       │                                │                          │                      │
+       ├── :tick (every @tick_interval) │                          │                      │
+       ├── {:get_positions, sim} ──────►│                          │                      │
+       │                                ├── get_positions(pid) ───►│                      │
+       │                                │                          ├── get_position(pid) ─►│
+       │                                │                          │◄── %{x, y} ──────────│
+       │                                │◄── %{positions: [...]} ──│                      │
+       │◄── %{positions: [...]} ────────│                          │                      │
+       │                                                                                   │
+       ├── push("positions", data) ──► Browser (Canvas renders agents)                    │
+       │                                                                                   │
+       │   Meanwhile, each PointAgent ticks independently:                                │
+       │                                                           ┌── :tick ─────────────│
+       │                                                           │  algorithm            │
+       │                                                           │  .update_position()   │
+       │                                                           │  updates position     │
+       │                                                           └──────────────────────►│
+```
+
+### 5. Algorithm System
+
+Algorithms implement the `Simulator.Algorithm` behaviour:
+
+```elixir
+@callback update_position(map()) :: map()
+```
+
+The callback receives the full agent state (`%{position: %{x, y}, map: %MapParams{}}`) and must return the new `%{x, y}` position. Available algorithms are registered in `Simulator.Algorithms` (`@available_algorithms` map). Unknown names fall back to `RandomWalk`.
+
+### 6. Map System
+
+Maps implement the `Simulator.Map` behaviour:
+
+```elixir
+@callback get_paramethers(map()) :: MapParams.t()
+```
+
+Each map returns a `%MapParams{width, height, structures}` struct that defines spatial bounds. Algorithms use these bounds to constrain agent movement (e.g. `RandomWalk` clamps positions to `0..map.width` and `0..map.height`).
 
 ## Testing
 
@@ -136,7 +226,7 @@ mix test
 Run tests for a specific file:
 
 ```bash
-mix test test/simulator_web/live/some_live_test.exs
+mix test test/simulator/point_agent_test.exs
 ```
 
 Run only previously failed tests:
@@ -156,7 +246,6 @@ mix test --failed
 | `mix precommit` | Run linters and tests (use before committing) |
 | `mix ecto.setup` | Set up the database |
 | `mix ecto.reset` | Reset the database |
-| `mix phx.gen.live` | Generate a new LiveView (scaffolding) |
 
 ## Configuration
 
@@ -168,26 +257,13 @@ Configuration files are located in `config/`:
 - **test.exs**: Test configuration
 - **runtime.exs**: Runtime configuration
 
-## Production Deployment
+## Adding New Algorithms
 
-For more information on deployment options:
+See [ALGORITHMS.md](ALGORITHMS.md) for a guide on implementing new movement algorithms.
 
-- [Phoenix Deployment Guides](https://hexdocs.pm/phoenix/deployment.html)
-- [Deploy with Fly.io](https://hexdocs.pm/phoenix/fly.html)
-- [Deploy with Heroku](https://hexdocs.pm/phoenix_heroku/installation.html)
+## Project Guidelines
 
-## Resources and Documentation
-
-### Official Documentation
-- [Phoenix Documentation](https://hexdocs.pm/phoenix/overview.html)
-- [Phoenix LiveView Guide](https://hexdocs.pm/phoenix_live_view/welcome.html)
-- [Elixir Documentation](https://elixir-lang.org/docs.html)
-- [Ecto Documentation](https://hexdocs.pm/ecto/Ecto.html)
-
-### Community
-- [Elixir Forum](https://elixirforum.com/c/phoenix-forum)
-- [Elixir Community](https://elixir-lang.org/community)
-- [Discord Elixir/Erlang](https://discord.gg/elixir)
+See [AGENTS.md](AGENTS.md) for development guidelines, code conventions, and architecture standards.
 
 ## Contributing
 
@@ -198,10 +274,6 @@ Contributions are welcome. Please:
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
-
-## Project Guidelines
-
-See [AGENTS.md](AGENTS.md) for development guidelines, code conventions, and architecture standards.
 
 ## License
 

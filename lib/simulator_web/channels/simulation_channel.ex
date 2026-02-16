@@ -1,4 +1,13 @@
 defmodule SimulatorWeb.SimulationChannel do
+  @moduledoc """
+  Phoenix Channel that drives real-time simulation execution.
+
+  When a client joins `"simulation:<id>"`, the channel starts (or reuses) an
+  execution via `SimulationManager`, then enters a tick loop that polls agent
+  positions every `@tick_interval` ms and pushes them to the client as
+  `"positions"` events.
+  """
+
   use SimulatorWeb, :channel
   require Logger
 

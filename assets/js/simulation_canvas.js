@@ -23,6 +23,7 @@ export function initSimulationCanvas() {
 
   const ctx = canvas.getContext("2d")
   const simulationId = canvas.dataset.simulationId
+  const structures = JSON.parse(canvas.dataset.structures || "[]")
 
   currentSocket = new Socket("/socket", {})
   currentSocket.connect()
@@ -37,9 +38,35 @@ export function initSimulationCanvas() {
     }
   }
 
+  function drawStructures(ctx, structures) {
+    ctx.save()
+    ctx.fillStyle = "rgba(128, 128, 128, 0.3)"
+    ctx.strokeStyle = "rgba(128, 128, 128, 0.8)"
+    ctx.lineWidth = 2
+
+    structures.forEach(structure => {
+      if (!structure.points || structure.points.length === 0) return
+
+      ctx.beginPath()
+      ctx.moveTo(structure.points[0].x, structure.points[0].y)
+      for (let i = 1; i < structure.points.length; i++) {
+        ctx.lineTo(structure.points[i].x, structure.points[i].y)
+      }
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+    })
+
+    ctx.restore()
+  }
+
   currentChannel.on("positions", ({positions}) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+    // Draw structures behind agents
+    drawStructures(ctx, structures)
+
+    // Draw agents
     const colors = getThemeColors()
     ctx.fillStyle = colors.fill
     ctx.strokeStyle = colors.stroke

@@ -1,10 +1,28 @@
 defmodule Simulator.SimulationManager do
+  @moduledoc """
+  GenServer that tracks multiple running simulation executions.
+
+  Maintains a map of `simulation.id => executor_pid` in its state. Prevents
+  duplicate executions for the same simulation ID — if an execution is already
+  running, `{:start_excution, ...}` replies with `:already_running`.
+
+  Started as a named singleton (`__MODULE__`) in the application supervision tree.
+  Accepts an optional `:interval` option (defaults to `@default_interval`).
+  """
+
   alias Simulator.SimulationExcutor
   use GenServer
   require Logger
 
   @default_interval 300
 
+  @doc """
+  Starts the SimulationManager GenServer.
+
+  Accepts a keyword list with an optional `:interval` key
+  (defaults to `@default_interval`). Registered as a named process under
+  `Simulator.SimulationManager`.
+  """
   def start_link(opts) do
     interval = Keyword.get(opts, :interval, @default_interval)
     initial_state = %{
@@ -69,9 +87,5 @@ defmodule Simulator.SimulationManager do
   def handle_cast({:simulation_event, payload}, state) do
     Logger.info("PeriodicPrinter received simulation_event: #{inspect(payload)}")
     {:noreply, state}
-  end
-
-  defp schedule(interval) do
-    Process.send_after(self(), :print, interval)
   end
 end

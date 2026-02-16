@@ -1,4 +1,11 @@
 defmodule SimulatorWeb.UserSocket do
+  @moduledoc """
+  WebSocket endpoint for simulation clients.
+
+  Routes `"simulation:*"` topics to `SimulatorWeb.SimulationChannel`.
+  Accepts all connections without authentication.
+  """
+
   use Phoenix.Socket
 
   channel "simulation:*", SimulatorWeb.SimulationChannel

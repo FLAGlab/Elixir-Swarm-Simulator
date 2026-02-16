@@ -1,36 +1,60 @@
-# Algoritmos de movimiento 🤖
+# Algoritmos de movimiento
 
-Este directorio contiene implementaciones de algoritmos de movimiento para los agentes (`lib/simulator/algorithms`).
+Este directorio contiene implementaciones de algoritmos de movimiento para los agentes (`lib/simulator/algorithms/`).
 
-Requisitos
+## Requisitos
+
 - Cada algoritmo debe ser un módulo que implemente la behaviour `Simulator.Algorithm`.
-- Debe definir `update_position(state)` que reciba el `state` del agente (un `map`) y devuelva el `state` actualizado.
+- Debe definir `update_position(state)` que reciba el `state` del agente (un `map` con las keys `:position` y `:map`) y devuelva el nuevo `%{x, y}` de posición.
 
-Ejemplo de uso
+## Ejemplo de uso
 
-- Crear un agente con el algoritmo por defecto (RandomWalk):
+- Crear un agente con un algoritmo y mapa específicos:
 
-    iex> {:ok, pid} = PointAgent.start_link()
+      iex> {:ok, pid} = PointAgent.start_link("random_walk", "clean")
 
-- Crear un agente con un algoritmo específico:
+- Los nombres de algoritmo se resuelven a través de `Simulator.Algorithms.get_algorithm/1`.
+  Si el nombre no se encuentra en `@available_algorithms`, se usa `RandomWalk` por defecto.
 
-    iex> {:ok, pid} = PointAgent.start_link(Simulator.Algorithms.Static)
+- Obtener la posición actual de un agente:
 
-- Cambiar el algoritmo en tiempo de ejecución:
+      iex> PointAgent.get_position(pid)
+      %{x: 255, y: 255}
 
-    iex> PointAgent.set_algorithm(pid, Simulator.Algorithms.RandomWalk)
+## Implementar un nuevo algoritmo
 
-- Implementar un nuevo algoritmo:
+1. Crear un módulo en `lib/simulator/algorithms/impl/`:
 
-    defmodule Simulator.Algorithms.MyAlgo do
-      @behaviour Simulator.Algorithm
+       defmodule Simulator.Algorithms.MyAlgo do
+         @moduledoc "Descripción del algoritmo."
+         @behaviour Simulator.Algorithm
 
-      @impl true
-      def update_position(state) do
-        # calcular nueva posición y devolver el state actualizado
-      end
-    end
+         @impl true
+         def update_position(%{position: position, map: map}) do
+           # Calcular nueva posición usando position.x, position.y
+           # y los límites map.width, map.height.
+           # Devolver el nuevo mapa de posición:
+           %{position | x: new_x, y: new_y}
+         end
+       end
 
-Notas
-- Las implementaciones existentes están en `lib/simulator/algorithms` (`RandomWalk`, `Static`).
-- `PointAgent` guarda el módulo de algoritmo en el estado bajo la key `:algorithm` y llama `algorithm.update_position(state)` en cada tick.
+2. Registrar el algoritmo en `Simulator.Algorithms` (`lib/simulator/algorithms/algorithms.ex`),
+   agregándolo al mapa `@available_algorithms`:
+
+       @available_algorithms %{
+         "random_walk" => RandomWalk,
+         "static" => Static,
+         "my_algo" => MyAlgo
+       }
+
+## Sistema de mapas
+
+Los algoritmos reciben los parámetros del mapa en `state.map`, que es un struct
+`%Simulator.Maps.MapParams{width, height, structures}`. Usa estos valores para
+limitar el movimiento de los agentes dentro del espacio definido.
+
+## Notas
+
+- Las implementaciones existentes están en `lib/simulator/algorithms/impl/` (`RandomWalk`, `Static`).
+- `PointAgent` guarda el módulo de algoritmo en el estado bajo la key `:algorithm` y llama `algorithm.update_position(state)` en cada tick (cada `@update_interval` ms).
+- El parámetro del mapa se guarda bajo la key `:map` como un `%MapParams{}`.
