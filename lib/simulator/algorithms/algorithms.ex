@@ -14,9 +14,11 @@ defmodule Simulator.Algorithms do
   }
 
   @doc """
-  Returns the module implementing the given algorithm name.
+  Returns the module implementing the given algorithm.
 
-  Falls back to `RandomWalk` when `name` is not found in `@available_algorithms`.
+  Accepts a string name (looked up in the registry) or a module atom
+  (returned as-is). Falls back to `RandomWalk` when a string name is
+  not found in `@available_algorithms`.
 
   ## Examples
 
@@ -28,8 +30,12 @@ defmodule Simulator.Algorithms do
 
       iex> Simulator.Algorithms.get_algorithm("unknown")
       Simulator.Algorithms.RandomWalk
+
+      iex> Simulator.Algorithms.get_algorithm(Simulator.Algorithms.Static)
+      Simulator.Algorithms.Static
   """
-  @spec get_algorithm(String.t()) :: module()
+  @spec get_algorithm(String.t() | module()) :: module()
+  def get_algorithm(name) when is_atom(name), do: name
   def get_algorithm(name) do
     Map.get(@available_algorithms, name, RandomWalk)
   end

@@ -1,41 +1,73 @@
 defmodule Simulator.PointAgentTest do
   use ExUnit.Case, async: true
 
-  alias Simulator.Algorithms.{RandomWalk, Static}
+  alias Simulator.Environment.PositionTracker
+  alias Simulator.Environment.ProximityDetector
+  alias Simulator.Environment.CommunicationRelay
 
-  test "start_link accepts algorithm and stores it" do
-    {:ok, pid} = PointAgent.start_link(Static, %{x: 10, y: 20}, start_controller: false)
-    assert %{x: 10, y: 20, algorithm: Static} = PointAgent.get_position(pid)
+  setup do
+    suffix = System.unique_integer([:positive])
+    tracker_name = :"tracker_test_#{suffix}"
+    proximity_name = :"proximity_test_#{suffix}"
+    relay_name = :"relay_test_#{suffix}"
+
+    {:ok, tracker} = PositionTracker.start_link(name: tracker_name)
+    {:ok, _proximity} = ProximityDetector.start_link(name: proximity_name, tracker: tracker_name)
+    {:ok, _relay} = CommunicationRelay.start_link(name: relay_name, tracker: tracker_name, proximity: proximity_name)
+
+    %{tracker: tracker, tracker_name: tracker_name, relay_name: relay_name}
   end
 
-  test "tick uses algorithm to update state" do
-    {:ok, pid} = PointAgent.start_link(Static, %{x: 5, y: 5}, start_controller: false)
-    PointAgent.tick(pid)
-    assert %{x: 5, y: 5, algorithm: Static} = PointAgent.get_position(pid)
-
-    {:ok, pid2} = PointAgent.start_link(RandomWalk, %{x: 50, y: 50}, start_controller: false)
-    old = PointAgent.get_position(pid2)
-    PointAgent.tick(pid2)
-    new = PointAgent.get_position(pid2)
-    # With random walk, position should be within bounds and likely changed
-    assert new.x in 0..500
-    assert new.y in 0..500
-    assert {old.x, old.y} != {new.x, new.y}
+  test "start_link initializes agent with default position", %{tracker_name: tracker, relay_name: relay} do
+    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay)
+    assert %{x: 255, y: 255} = PointAgent.get_position(pid)
   end
 
-  test "set_algorithm changes the algorithm used for future ticks" do
-    {:ok, pid} = PointAgent.start_link(Static, %{x: 10, y: 10}, start_controller: false)
-    PointAgent.set_algorithm(pid, RandomWalk)
-    PointAgent.tick(pid)
-    new = PointAgent.get_position(pid)
-    assert new.algorithm == RandomWalk
-    assert new.x in 0..500
-    assert new.y in 0..500
+  test "agent reports position to tracker after tick", %{tracker: tracker, tracker_name: tracker_name, relay_name: relay} do
+    {:ok, _pid} = PointAgent.start_link("static", "clean", tracker_name, relay)
+
+    Process.sleep(50)
+
+    %{positions: positions} = PositionTracker.get_positions(tracker)
+    assert length(positions) == 1
+    assert %{x: 255, y: 255} = hd(positions)
   end
 
-  test "set_direction stores dx/dy in state" do
-    {:ok, pid} = PointAgent.start_link(Static, %{x: 1, y: 2}, start_controller: false)
-    PointAgent.set_direction(pid, {3, 4})
-    assert %{dx: 3, dy: 4} = PointAgent.get_position(pid)
+  test "notify_drone_entered adds neighbor to state", %{tracker_name: tracker, relay_name: relay} do
+    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay)
+    fake_neighbor = self()
+
+    PointAgent.notify_drone_entered(pid, fake_neighbor, %{x: 100, y: 100})
+    Process.sleep(10)
+
+    state = :sys.get_state(pid)
+    assert Map.has_key?(state.neighbors, fake_neighbor)
+    assert state.neighbors[fake_neighbor] == %{x: 100, y: 100}
+  end
+
+  test "notify_drone_left removes neighbor from state", %{tracker_name: tracker, relay_name: relay} do
+    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay)
+    fake_neighbor = self()
+
+    PointAgent.notify_drone_entered(pid, fake_neighbor, %{x: 100, y: 100})
+    Process.sleep(10)
+    PointAgent.notify_drone_left(pid, fake_neighbor)
+    Process.sleep(10)
+
+    state = :sys.get_state(pid)
+    refute Map.has_key?(state.neighbors, fake_neighbor)
+  end
+
+  test "receive_shared_data delegates to algorithm", %{tracker_name: tracker, relay_name: relay} do
+    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay)
+    fake_sender = self()
+
+    # Static algorithm doesn't implement handle_received_data,
+    # so the state should remain unchanged
+    PointAgent.receive_shared_data(pid, fake_sender, %{some: "data"})
+    Process.sleep(10)
+
+    state = :sys.get_state(pid)
+    assert state.position == %{x: 255, y: 255}
   end
 end

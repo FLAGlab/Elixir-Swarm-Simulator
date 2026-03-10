@@ -48,7 +48,7 @@ Maps are registered in `Simulator.Maps` (`lib/simulator/maps/maps.ex`) inside th
 - List available maps:
 
       iex> Simulator.Maps.get_available_maps_keys()
-      ["big_clean", "city", "clean"]
+      ["big_clean", "city", "clean", "square_obstacle"]
 
 ## Implementing a New Map
 
@@ -92,6 +92,6 @@ Map parameters are loaded at two points:
 
 ## Notes
 
-- Existing implementations are in `lib/simulator/maps/impl/` (`CleanMap`, `CityMap`, `BigCleanMap`).
-- The `structures` field is available for defining obstacles but no current implementation uses it.
+- Existing implementations are in `lib/simulator/maps/impl/` (`CleanMap`, `CityMap`, `BigCleanMap`, `SquareObstacleMap`).
+- The `structures` field defines obstacles as polygon point lists (see `SquareObstacleMap` for an example).
 - The frontend canvas uses the same `width` and `height` values from `MapParams` to size the visualization area.

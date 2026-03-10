@@ -1,10 +1,16 @@
 defmodule Simulator.SimulationExcutor do
   @moduledoc """
-  GenServer that manages a single simulation execution.
+  GenServer that orchestrates the simulation environment.
 
-  On initialization it spawns N `PointAgent` processes (where N is
-  `simulation.swarm`) and keeps their PIDs. Provides a synchronous
-  `get_positions/1` call to aggregate the current position of every agent.
+  On initialization it starts the environment modules (PositionTracker,
+  ProximityDetector, CommunicationRelay) and spawns N `PointAgent` processes.
+  The Executor does not control drone behavior — it simulates the physical
+  world around them.
+
+  The environment modules handle:
+  - **PositionTracker**: stores positions broadcast by agents
+  - **ProximityDetector**: detects when drones enter/leave each other's range
+  - **CommunicationRelay**: delivers shared data between neighboring drones
 
   The process is registered with `simulation.type` as its name, so only one
   execution per type can run at a time.
@@ -13,11 +19,14 @@ defmodule Simulator.SimulationExcutor do
   use GenServer
   require Logger
 
-  @doc """
-  Returns the current positions of all agents in the execution identified by `pid`.
+  alias Simulator.Environment.PositionTracker
+  alias Simulator.Environment.ProximityDetector
+  alias Simulator.Environment.CommunicationRelay
 
-  Performs a synchronous `GenServer.call` with `:get_positions` and returns
-  `%{positions: [%{x, y}, ...]}`.
+  # Public API -------------------------------------------------------
+
+  @doc """
+  Returns the current positions of all agents via the PositionTracker.
   """
   def get_positions(pid) do
     GenServer.call(pid, :get_positions)
@@ -28,38 +37,51 @@ defmodule Simulator.SimulationExcutor do
 
   Expects a map `%{simulation: %Simulation{}}`. The GenServer is registered
   under `String.to_atom(simulation.type)`.
-
-  Returns `{:ok, pid}` on success.
   """
-  def start_link(%{:simulation => simulation}) do
+  def start_link(%{simulation: simulation}) do
     Logger.info("SimulationExcutor: start excution #{simulation.type}")
-    initial_state = %{
-      :simulation => simulation
-    }
+    initial_state = %{simulation: simulation}
     GenServer.start_link(__MODULE__, initial_state, name: String.to_atom(simulation.type))
   end
+
+  # Callbacks --------------------------------------------------------
 
   @impl true
   def init(state) do
     simulation = state.simulation
     Logger.info("SimulationExcutor: init excution #{simulation.type}")
 
+    tracker_name = env_name("tracker", simulation.type)
+    proximity_name = env_name("proximity", simulation.type)
+    relay_name = env_name("relay", simulation.type)
+
+    {:ok, tracker_pid} = PositionTracker.start_link(name: tracker_name)
+
+    {:ok, proximity_pid} = ProximityDetector.start_link(
+      name: proximity_name,
+      tracker: tracker_name
+    )
+
+    {:ok, relay_pid} = CommunicationRelay.start_link(
+      name: relay_name,
+      tracker: tracker_name,
+      proximity: proximity_name
+    )
+
+    agents = spawn_agents(simulation, tracker_name, relay_name)
+
     new_state = state
-    |> Map.put(:agents, obtains_agents(state.simulation))
+    |> Map.put(:agents, agents)
+    |> Map.put(:tracker, tracker_pid)
+    |> Map.put(:proximity_detector, proximity_pid)
+    |> Map.put(:relay, relay_pid)
 
     {:ok, new_state}
   end
 
   @impl true
   def handle_call(:get_positions, _from, state) do
-    positions = state.agents
-    |> Enum.map(fn agent_pid ->
-      PointAgent.get_position(agent_pid)
-    end)
-
-    data = %{
-      :positions => positions
-    }
+    data = PositionTracker.get_positions(state.tracker)
     {:reply, data, state}
   end
 
@@ -69,19 +91,18 @@ defmodule Simulator.SimulationExcutor do
   end
 
   @impl true
-  # handle direct notifications (no PubSub)
   def handle_cast({:simulation_event, _payload}, state) do
     {:noreply, state}
   end
 
-  @doc """
-  Spawns `count` `PointAgent` processes using the given `algorithm` and `map`
-  names and returns a list of their PIDs.
-  """
-  def obtains_agents(%{swarm: count, algorithm: algorithm, map: map}) do
+  # Private ----------------------------------------------------------
+
+  defp spawn_agents(%{swarm: count, algorithm: algorithm, map: map}, tracker, relay) do
     for _ <- 1..count do
-      {:ok, pid} = PointAgent.start_link(algorithm, map)
+      {:ok, pid} = PointAgent.start_link(algorithm, map, tracker, relay)
       pid
     end
   end
+
+  defp env_name(prefix, type), do: String.to_atom("#{prefix}_#{type}")
 end

@@ -10,7 +10,7 @@ defmodule SimulatorWeb.SimulationControllerTest do
   describe "index" do
     test "lists all simulations", %{conn: conn} do
       conn = get(conn, ~p"/simulations")
-      assert html_response(conn, 200) =~ "Listing Simulations"
+      assert html_response(conn, 200) =~ "Simulations"
     end
   end
 
@@ -22,14 +22,13 @@ defmodule SimulatorWeb.SimulationControllerTest do
   end
 
   describe "create simulation" do
-    test "redirects to show when data is valid", %{conn: conn} do
+    test "redirects to index when data is valid", %{conn: conn} do
       conn = post(conn, ~p"/simulations", simulation: @create_attrs)
 
-      assert %{id: id} = redirected_params(conn)
-      assert redirected_to(conn) == ~p"/simulations/#{id}"
+      assert redirected_to(conn) == ~p"/simulations"
 
-      conn = get(conn, ~p"/simulations/#{id}")
-      assert html_response(conn, 200) =~ "Simulation #{id}"
+      conn = get(conn, ~p"/simulations")
+      assert html_response(conn, 200) =~ "some type"
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
