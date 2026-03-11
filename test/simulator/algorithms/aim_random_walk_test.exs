@@ -91,7 +91,7 @@ defmodule Simulator.Algorithms.AimRandomWalkTest do
       target = new_state.target
       obstacle = hd(@obstacle_map.structures)
 
-      refute Simulator.Geometry.point_in_polygon?(
+      refute Simulator.Algorithms.Helpers.Geometry.point_in_polygon?(
                {target.x, target.y},
                obstacle.points
              )

@@ -1,7 +1,7 @@
-defmodule Simulator.GeometryTest do
+defmodule Simulator.Algorithms.Helpers.GeometryTest do
   use ExUnit.Case, async: true
 
-  alias Simulator.Geometry
+  alias Simulator.Algorithms.Helpers.Geometry
   alias Simulator.Maps.MapParams
 
   # Square from (0,0) to (10,10)
