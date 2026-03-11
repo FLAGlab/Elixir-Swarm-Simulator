@@ -2,7 +2,7 @@ defmodule Simulator.Algorithms.RandomWalk do
   @moduledoc "Random walk algorithm: moves x and y by a small random delta, avoiding obstacles."
   @behaviour Simulator.Algorithm
 
-  alias Simulator.Geometry
+  alias Simulator.Algorithms.Helpers.Geometry
 
   @max_attempts 10
 

@@ -1,6 +1,6 @@
-defmodule Simulator.Geometry do
+defmodule Simulator.Algorithms.Helpers.Geometry do
   @moduledoc """
-  Geometric and spatial utilities for the simulation.
+  Geometric and spatial utilities for algorithm implementations.
 
   Provides primitives (distance, clamping, polygon tests) and higher-level
   helpers (collision checks, random point generation, directed steps) that
@@ -14,13 +14,13 @@ defmodule Simulator.Geometry do
 
   ## Examples
 
-      iex> Simulator.Geometry.clamp(15, 0, 10)
+      iex> Simulator.Algorithms.Helpers.Geometry.clamp(15, 0, 10)
       10
 
-      iex> Simulator.Geometry.clamp(-3, 0, 10)
+      iex> Simulator.Algorithms.Helpers.Geometry.clamp(-3, 0, 10)
       0
 
-      iex> Simulator.Geometry.clamp(5, 0, 10)
+      iex> Simulator.Algorithms.Helpers.Geometry.clamp(5, 0, 10)
       5
   """
   @spec clamp(number(), number(), number()) :: number()
@@ -158,6 +158,41 @@ defmodule Simulator.Geometry do
       x: clamp(position.x + step_x, 0, map.width),
       y: clamp(position.y + step_y, 0, map.height)
     }
+  end
+
+  # Public API — Cell grid helpers ------------------------------------
+
+  @doc """
+  Converts a position `%{x, y}` to its grid cell `{col, row}` for the
+  given cell size.
+  """
+  @spec position_to_cell(%{x: number(), y: number()}, non_neg_integer()) ::
+          {non_neg_integer(), non_neg_integer()}
+  def position_to_cell(%{x: x, y: y}, cell_size) do
+    {div(trunc(x), cell_size), div(trunc(y), cell_size)}
+  end
+
+  @doc """
+  Generates a random point within a grid cell, clamped to map bounds.
+  """
+  @spec cell_to_point({non_neg_integer(), non_neg_integer()}, non_neg_integer(), map()) ::
+          %{x: number(), y: number()}
+  def cell_to_point({col, row}, cell_size, map_params) do
+    x = clamp(col * cell_size + Enum.random(0..(cell_size - 1)), 0, map_params.width)
+    y = clamp(row * cell_size + Enum.random(0..(cell_size - 1)), 0, map_params.height)
+    %{x: x, y: y}
+  end
+
+  @doc """
+  Creates a grid of `{col, row}` cells covering the full map, each
+  initialized to `default_value`.
+  """
+  @spec build_cell_grid(map(), non_neg_integer(), any()) :: map()
+  def build_cell_grid(map_params, cell_size, default_value \\ 0) do
+    cols = div(map_params.width, cell_size) + 1
+    rows = div(map_params.height, cell_size) + 1
+
+    for c <- 0..(cols - 1), r <- 0..(rows - 1), into: %{}, do: {{c, r}, default_value}
   end
 
   # Private ----------------------------------------------------------

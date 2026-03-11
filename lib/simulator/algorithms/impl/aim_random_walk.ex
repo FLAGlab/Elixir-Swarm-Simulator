@@ -9,7 +9,7 @@ defmodule Simulator.Algorithms.AimRandomWalk do
 
   @behaviour Simulator.Algorithm
 
-  alias Simulator.Geometry
+  alias Simulator.Algorithms.Helpers.Geometry
 
   @step_size 5
   @arrival_threshold 3

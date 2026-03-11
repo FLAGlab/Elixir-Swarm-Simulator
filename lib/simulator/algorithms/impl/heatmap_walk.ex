@@ -15,8 +15,8 @@ defmodule Simulator.Algorithms.HeatmapWalk do
 
   @behaviour Simulator.Algorithm
 
-  alias Simulator.Geometry
-  alias Simulator.Algorithms.KnowledgeStore
+  alias Simulator.Algorithms.Helpers.Geometry
+  alias Simulator.Algorithms.Helpers.KnowledgeStore
 
   @step_size 5
   @arrival_threshold 3
@@ -105,8 +105,8 @@ defmodule Simulator.Algorithms.HeatmapWalk do
       min_heat = heat |> Map.values() |> Enum.min()
       cool_cells = for {cell, count} <- heat, count == min_heat, do: cell
 
-      {col, row} = Enum.random(cool_cells)
-      candidate = cell_to_point(col, row, map)
+      cell = Enum.random(cool_cells)
+      candidate = Geometry.cell_to_point(cell, @cell_size, map)
 
       if Geometry.inside_structure?({candidate.x, candidate.y}, map.structures) do
         Geometry.random_open_point(map, fallback)
@@ -117,20 +117,11 @@ defmodule Simulator.Algorithms.HeatmapWalk do
   end
 
   defp build_heat_grid(map, visited) do
-    cols = div(map.width, @cell_size) + 1
-    rows = div(map.height, @cell_size) + 1
-
-    base = for c <- 0..(cols - 1), r <- 0..(rows - 1), into: %{}, do: {{c, r}, 0}
+    base = Geometry.build_cell_grid(map, @cell_size)
 
     Enum.reduce(visited, base, fn pos, acc ->
-      cell = {div(pos.x, @cell_size), div(pos.y, @cell_size)}
+      cell = Geometry.position_to_cell(pos, @cell_size)
       Map.update(acc, cell, 1, &(&1 + 1))
     end)
-  end
-
-  defp cell_to_point(col, row, map) do
-    x = Geometry.clamp(col * @cell_size + Enum.random(0..(@cell_size - 1)), 0, map.width)
-    y = Geometry.clamp(row * @cell_size + Enum.random(0..(@cell_size - 1)), 0, map.height)
-    %{x: x, y: y}
   end
 end

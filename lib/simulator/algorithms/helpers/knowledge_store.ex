@@ -1,4 +1,4 @@
-defmodule Simulator.Algorithms.KnowledgeStore do
+defmodule Simulator.Algorithms.Helpers.KnowledgeStore do
   @moduledoc """
   Utilities for managing shared knowledge between drones.
 
