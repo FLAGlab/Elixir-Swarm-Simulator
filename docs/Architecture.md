@@ -23,8 +23,8 @@ Simulator.Supervisor (one_for_one)
 
 Models an **autonomous drone** as a GenServer process. Each PointAgent represents a single swarm member that operates with **local information only** — it knows its own position, its map (pre-loaded, like an offline GPS), its detected neighbors, and data received from other drones. It must never access external state directly, just as a real drone would be limited to its own sensors and communications.
 
-- **State**: `%{position: %{x, y}, algorithm: module, map: %MapParams{}, neighbors: %{}, tracker: pid, relay: pid}`
-- **Initial position**: `{255, 255}`
+- **State**: `%{id: integer, position: %{x, y}, algorithm: module, map: %MapParams{}, neighbors: %{}, tracker: pid, relay: pid}`
+- **Initial position**: Defined by the map's `spawn_point` (e.g., `%{x: 250, y: 250}` for CleanMap)
 - **Tick loop**: Every 30ms via `handle_info(:tick)`, the drone:
   1. Calls the algorithm to decide its next movement
   2. Broadcasts its new position to the PositionTracker
@@ -45,8 +45,11 @@ Algorithms are the **brain of the drone**. They are pluggable components that gi
   1. **Movement**: `compute_step(state)` — computes the drone's next position and updated state (required)
   2. **Broadcasting**: `get_shared_data(state)` — decides what data to share with neighbors (optional, defaults to `%{}`)
   3. **Receiving**: `handle_received_data(sender, data, state)` — processes data received from a neighbor (optional, defaults to no-op)
+  4. **Formatting**: `format_state(algo_state)` — prepares algorithm state for external consumption, e.g. merging internal structures before exposing to the detail panel (optional, defaults to identity)
 - **Registry** (`algorithms.ex`): maps string names to modules, also accepts module atoms directly. Defaults to `RandomWalk`
-- **Implementations** in `impl/`: `RandomWalk`, `Static`, `AimRandomWalk`
+- **Implementations** in `impl/`: `RandomWalk`, `Static`, `AimRandomWalk`, `HeatmapWalk`
+
+**KnowledgeStore** (`knowledge_store.ex`): Utility module for algorithms that share positional knowledge between drones. Provides functions for decaying received data (one position per tick), merging incoming knowledge with anti-echo (filters own PID), combining own and received positions, and formatting for export. Used by `HeatmapWalk` and available for any future cooperative algorithm.
 
 See [ALGORITHMS.md](./ALGORITHMS.md) for details on implementing new algorithms.
 
@@ -65,7 +68,8 @@ SimulationExecutor
 ```
 
 **Responsibilities:**
-- **Spawn agents**: Creates N `PointAgent` processes (N = `simulation.swarm`)
+- **Spawn agents**: Creates N `PointAgent` processes (N = `simulation.swarm`), stored as `%{id => pid}`
+- **Query agent detail**: `get_agent_detail/2` retrieves a specific agent's detailed state by ID
 - **Orchestrate environment modules**: Starts and wires PositionTracker, ProximityDetector, and CommunicationRelay
 - **Aggregate positions**: `get_positions/1` reads from the PositionTracker (agents broadcast their position, the Executor no longer polls them)
 - **Simulate peripherals**: Can send collision warnings, proximity alerts, or sensor data to drones — simulating what their hardware would detect in the real world
@@ -93,7 +97,7 @@ The Manager is an **application-level component**, not part of the simulation it
 **Responsibilities:**
 - Maintains map: `simulation.id => executor_pid`
 - Prevents duplicate executions (returns `:already_running`)
-- Delegates position queries and commands to the appropriate Executor
+- Delegates position queries, agent detail queries, and commands to the appropriate Executor
 - Serves as the sole communication bridge between controllers/channels and Executors
 
 ### Map System (`lib/simulator/maps/`)
@@ -106,7 +110,7 @@ Maps define the **static environment** for a simulation. They represent pre-know
 
 **Implementation:**
 - **Behaviour** (`map.ex`): `@callback get_paramethers(map()) :: MapParams.t()`
-- **MapParams struct** (`map_params.ex`): `%{width, height, structures}`
+- **MapParams struct** (`map_params.ex`): `%{width, height, structures, spawn_point}`
 - **Registry** (`maps.ex`): maps string names to modules, defaults to `CleanMap`
 - **Implementations** in `impl/`: `CleanMap`, `BigCleanMap`, `CityMap`, `SquareObstacleMap`
 
@@ -150,6 +154,8 @@ GET    /execution/:id       ExecutionController.show
 
 - Endpoint: `/socket` (UserSocket)
 - Channel: `"simulation:<id>"` → `SimulationChannel`
+- Incoming events: `"select_drone"` (with `%{"id" => id}`), `"deselect_drone"`
+- Outgoing events: `"positions"` (all agents), `"drone_detail"` (selected agent's detailed state)
 
 ## Real-Time Execution Data Flow
 
@@ -185,8 +191,9 @@ Browser (JS) --> WebSocket /socket --> SimulationChannel.join("simulation:<id>")
 SimulationChannel.handle_info(:tick)
   |-- GenServer.call(SimulationManager, {:get_positions, ...})
   |   |-- SimulationExecutor reads from PositionTracker
-  |   |-- Return %{positions: [%{x, y}, ...]}
+  |   |-- Return %{positions: [%{x, y, color, id}, ...]}
   |-- push(socket, "positions", %{positions: positions})
+  |-- push_selected_drone_detail (if a drone is selected)
   |-- schedule_tick()
 ```
 
@@ -230,8 +237,15 @@ CommunicationRelay (on each broadcast):
 
 ### Canvas rendering details
 - Structures: gray filled polygons (0.3 opacity fill, 0.8 opacity stroke)
+- Heatmap overlay: when a heatmap_walk drone is selected, visited cells are drawn as semi-transparent red rectangles with opacity proportional to visit density
 - Agents: outer circle (radius 20, stroke) + inner circle (radius 5, filled)
-- Colors: read from CSS variables `--color-primary` and `--color-secondary`
+- Agent colors: violet (`#6366f1`) when alone, green (`#22c55e`) when has neighbors, amber (`#f59e0b`) when selected
+
+### Drone grid and detail panel
+- Below the canvas, a 4-column grid displays drone IDs with color-coded dots
+- Clicking a drone toggles selection (sends `select_drone`/`deselect_drone` to the channel)
+- When selected, a detail panel shows the drone's position, neighbor count, and algorithm-specific state
+- The selected drone concept lives only in the web layer — the backend exposes a generic `get_agent_detail` query
 
 ## Key Design Decisions
 

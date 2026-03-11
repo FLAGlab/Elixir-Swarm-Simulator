@@ -13,11 +13,14 @@ The `Simulator.Maps.MapParams` struct defines the spatial parameters of the map:
 
 ```elixir
 %Simulator.Maps.MapParams{
-  width: non_neg_integer(),    # Map width in pixels
-  height: non_neg_integer(),   # Map height in pixels
-  structures: list()           # List of structures/obstacles in the map
+  width: non_neg_integer(),          # Map width in pixels
+  height: non_neg_integer(),         # Map height in pixels
+  structures: list(),                # List of structures/obstacles in the map
+  spawn_point: %{x: non_neg_integer(), y: non_neg_integer()}  # Initial position for all agents
 }
 ```
+
+The `spawn_point` defines where all agents start. It must be outside of any structure polygon to prevent agents from spawning inside obstacles.
 
 ## Available Maps
 
@@ -65,6 +68,7 @@ Maps are registered in `Simulator.Maps` (`lib/simulator/maps/maps.ex`) inside th
            %MapParams{
              width: 800,
              height: 600,
+             spawn_point: %{x: 400, y: 300},
              structures: [
                # Define obstacles or structures here
              ]
@@ -86,7 +90,7 @@ Maps are registered in `Simulator.Maps` (`lib/simulator/maps/maps.ex`) inside th
 
 Map parameters are loaded at two points:
 
-1. **When creating a `PointAgent`**: `PointAgent.start_link/2` resolves the map name and stores the `%MapParams{}` in the agent state under the `:map` key.
+1. **When creating a `PointAgent`**: `PointAgent.start_link/5` resolves the map name and stores the `%MapParams{}` in the agent state under the `:map` key. The agent's initial position is set to `map.spawn_point`.
 
 2. **Inside algorithms**: Each algorithm receives the full agent state including `state.map` with the `width`, `height`, and `structures` fields. Algorithms use these values to constrain movement within the defined space (for example, `RandomWalk` clamps positions between `0` and `map.width`/`map.height`).
 

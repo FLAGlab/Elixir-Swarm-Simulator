@@ -84,20 +84,29 @@ Visit [`http://localhost:4000`](http://localhost:4000) once the server is starte
 │   │   ├── simulations.ex            # Ecto CRUD context
 │   │   ├── simulations/
 │   │   │   └── simulation.ex         # Simulation schema (type, algorithm, swarm, map)
+│   │   ├── geometry.ex               # Geometric utilities (collision, distance, etc.)
 │   │   ├── algorithms/
 │   │   │   ├── algorithm.ex          # Algorithm behaviour
 │   │   │   ├── algorithms.ex         # Algorithm registry
+│   │   │   ├── knowledge_store.ex    # Shared knowledge utilities (decay, merge, anti-echo)
 │   │   │   └── impl/                 # Algorithm implementations
-│   │   │       ├── random_walk.ex    # Random walk movement
-│   │   │       └── static.ex         # No movement
+│   │   │       ├── random_walk.ex    # Random walk with collision avoidance
+│   │   │       ├── static.ex         # No movement
+│   │   │       ├── aim_random_walk.ex # Target-directed walk
+│   │   │       └── heatmap_walk.ex   # Heat-grid exploration with shared knowledge
+│   │   ├── environment/              # Physical world simulation
+│   │   │   ├── position_tracker.ex   # Stores agent positions
+│   │   │   ├── proximity_detector.ex # Detects neighbor proximity
+│   │   │   └── communication_relay.ex # Routes data between neighbors
 │   │   └── maps/
 │   │       ├── map.ex                # Map behaviour
 │   │       ├── maps.ex               # Map registry
-│   │       ├── map_params.ex         # MapParams struct (width, height, structures)
+│   │       ├── map_params.ex         # MapParams struct (width, height, structures, spawn_point)
 │   │       └── impl/                 # Map implementations
 │   │           ├── clean_map.ex      # 500×500 empty map
-│   │           ├── clean_city.ex     # 500×500 city map
-│   │           └── big_clean_map.ex  # 1000×500 empty map
+│   │           ├── clean_city.ex     # 500×500 city map with 8 blocks
+│   │           ├── big_clean_map.ex  # 1000×500 empty map
+│   │           └── square_obstacle_map.ex # 1000×500 map with centered obstacle
 │   └── simulator_web/               # Web layer
 │       ├── router.ex                 # HTTP routes
 │       ├── channels/
@@ -160,15 +169,18 @@ SimulationManager (singleton GenServer)
   │
   └── SimulationExcutor (GenServer, one per simulation)
         │
-        ├── PointAgent 1 (Agent + linked tick process)
-        ├── PointAgent 2 (Agent + linked tick process)
+        ├── PositionTracker    (stores positions broadcast by agents)
+        ├── ProximityDetector  (detects neighbor proximity)
+        ├── CommunicationRelay (routes data between neighbors)
+        ├── PointAgent 1 (GenServer + tick loop)
+        ├── PointAgent 2 (GenServer + tick loop)
         ├── ...
-        └── PointAgent N (Agent + linked tick process)
+        └── PointAgent N (GenServer + tick loop)
 ```
 
 - **SimulationManager** — Prevents duplicate executions per simulation ID. Delegates `start_excution` and `get_positions` calls to the appropriate executor.
 - **SimulationExcutor** — Spawns N `PointAgent` processes on init. Registered under `simulation.type` as its process name.
-- **PointAgent** — Each agent is an `Agent` process holding `%{position, algorithm, map}`. A `spawn_link`-ed process sends `:tick` every `@update_interval` ms, calling `algorithm.compute_step(state)` to compute the next position and updated state.
+- **PointAgent** — Each agent is a GenServer holding `%{id, position, algorithm, map, neighbors, tracker, relay}`. Every `@update_interval` ms it calls `algorithm.compute_step(state)` to compute the next position and updated state, then broadcasts position and shared data.
 
 ### 4. Real-Time Position Loop
 
@@ -263,7 +275,7 @@ See [ALGORITHMS.md](ALGORITHMS.md) for a guide on implementing new movement algo
 
 ## Project Guidelines
 
-See [AGENTS.md](AGENTS.md) for development guidelines, code conventions, and architecture standards.
+See [docs/ProgramingGuide.md](docs/ProgramingGuide.md) for development guidelines, code conventions, and architecture standards.
 
 ## Contributing
 

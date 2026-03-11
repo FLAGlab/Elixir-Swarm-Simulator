@@ -39,11 +39,24 @@ Procesa datos recibidos de un dron vecino. Llamado por el agente cuando el Commu
 - Devuelve el estado actualizado
 - Si no se implementa, el estado queda sin cambios
 
+### `format_state(algo_state)` — opcional
+
+Prepara el estado del algoritmo para consumo externo (e.g., panel de detalle del dron).
+Permite al algoritmo combinar estructuras internas, eliminar detalles de implementación,
+o reformatear datos antes de exponerlos. Llamado a través de `Algorithm.format_state/2`.
+
+- `algo_state` — estado del algoritmo (sin keys del sistema como `:position`, `:neighbors`, etc.)
+- Devuelve el estado transformado
+- Si no se implementa, se devuelve el estado sin cambios
+
+Ejemplo: `HeatmapWalk` combina `visited` + `received_visited` en una sola lista `visited`
+y elimina keys internas (`received_visited`) antes de enviar al frontend.
+
 ## Ejemplo de uso
 
 - Crear un agente con un algoritmo y mapa específicos:
 
-      iex> {:ok, pid} = PointAgent.start_link("random_walk", "clean", tracker, relay)
+      iex> {:ok, pid} = PointAgent.start_link("random_walk", "clean", tracker, relay, 1)
 
 - Los nombres de algoritmo se resuelven a través de `Simulator.Algorithms.get_algorithm/1`.
   Acepta strings (busca en el registry) o módulos atom (los devuelve directamente).
@@ -52,7 +65,7 @@ Procesa datos recibidos de un dron vecino. Llamado por el agente cuando el Commu
 - Obtener la posición actual de un agente:
 
       iex> PointAgent.get_position(pid)
-      %{x: 255, y: 255}
+      %{x: 250, y: 250}
 
 ## Implementar un nuevo algoritmo
 
@@ -130,14 +143,58 @@ Para algoritmos que necesitan compartir información entre drones:
       end
     end
 
+### Algoritmo con conocimiento compartido (KnowledgeStore)
+
+Para algoritmos que necesitan compartir y gestionar conocimiento posicional entre drones,
+el módulo `Simulator.Algorithms.KnowledgeStore` provee utilidades reutilizables:
+
+- `decay(received_visited)` — elimina la posición más vieja de cada entry por tick
+- `merge(received_visited, incoming_knowledge)` — merge con anti-eco (filtra self) y frescura
+- `all_positions(visited, received_visited)` — combina propio + recibido en lista plana
+- `build_shareable(visited, received_visited)` — arma mapa `%{source_pid => positions}` para broadcast
+- `format_for_export(algo_state)` — combina para el frontend y elimina keys internas
+
+Ejemplo de uso en `HeatmapWalk`:
+
+    defmodule Simulator.Algorithms.HeatmapWalk do
+      alias Simulator.Algorithms.KnowledgeStore
+
+      @impl true
+      def get_shared_data(state) do
+        visited = Map.get(state, :visited, [])
+        received = Map.get(state, :received_visited, %{})
+        %{type: :heatmap, knowledge: KnowledgeStore.build_shareable(visited, received)}
+      end
+
+      @impl true
+      def handle_received_data(_sender, %{type: :heatmap, knowledge: incoming}, state) do
+        received = Map.get(state, :received_visited, %{})
+        Map.put(state, :received_visited, KnowledgeStore.merge(received, incoming))
+      end
+
+      @impl true
+      def format_state(algo_state), do: KnowledgeStore.format_for_export(algo_state)
+    end
+
+El conocimiento se almacena por fuente original (`source_pid`), lo que:
+- Previene eco (no almacenas tu propia data de vuelta)
+- Evita duplicación (misma fuente siempre bajo la misma key)
+- Permite transitividad (A comparte info de B a C, atribuida a B)
+- Decae naturalmente (una posición menos por tick por entry)
+
 ## Utilidades de geometría
 
 El módulo `Simulator.Geometry` (`lib/simulator/geometry.ex`) provee funciones reutilizables
 para algoritmos que necesitan detección de colisiones:
 
 - `clamp(value, min, max)` — limita un valor entre mínimo y máximo
+- `euclidean_distance(p1, p2)` — distancia euclidiana entre dos puntos `%{x, y}`
 - `point_in_polygon?({x, y}, points)` — verifica si un punto está dentro de un polígono
 - `segment_intersects_polygon?(p1, p2, points)` — verifica si un segmento cruza un polígono
+- `inside_structure?({x, y}, structures)` — verifica si un punto cae dentro de cualquier estructura del mapa
+- `path_collides?(from, to, structures)` — verifica si un movimiento colisiona con alguna estructura
+- `random_open_point(map, fallback)` — genera un punto random fuera de obstáculos
+- `step_toward(position, target, map, step_size)` — calcula un paso hacia un objetivo, clampeado al mapa
 
 ## Sistema de mapas
 
@@ -147,10 +204,11 @@ limitar el movimiento de los agentes dentro del espacio definido.
 
 ## Notas
 
-- Las implementaciones existentes están en `lib/simulator/algorithms/impl/` (`RandomWalk`, `Static`, `AimRandomWalk`).
+- Las implementaciones existentes están en `lib/simulator/algorithms/impl/` (`RandomWalk`, `Static`, `AimRandomWalk`, `HeatmapWalk`).
 - `PointAgent` es un GenServer que llama `algorithm.compute_step(state)` en cada tick (cada 30ms).
 - Los callbacks opcionales se invocan a través de helpers en `Simulator.Algorithm`:
   `Algorithm.shared_data(module, state)` y `Algorithm.receive_data(module, sender, data, state)`.
   Estos verifican si el callback está implementado antes de llamarlo.
+- `Algorithm.format_state(module, algo_state)` prepara el estado para consumo externo.
 - El estado del agente incluye `neighbors` (mapa de PIDs a posiciones) detectados por el ProximityDetector.
 - Los datos compartidos se entregan via CommunicationRelay solo a vecinos dentro del radio de detección.
