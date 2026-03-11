@@ -5,7 +5,7 @@ This directory contains map implementations for the simulations (`lib/simulator/
 ## Requirements
 
 - Each map must be a module that implements the `Simulator.Map` behaviour.
-- It must define `get_paramethers(opts)` which receives a `map` of options and returns a `%Simulator.Maps.MapParams{}` struct with the dimensions and structures of the simulation space.
+- It must define `get_parameters(opts)` which receives a `map` of options and returns a `%Simulator.Maps.MapParams{}` struct with the dimensions and structures of the simulation space.
 
 ## `MapParams` Struct
 
@@ -42,7 +42,7 @@ Maps are registered in `Simulator.Maps` (`lib/simulator/maps/maps.ex`) inside th
 
 - Get the parameters of a map:
 
-      iex> Simulator.Maps.get_map("clean").get_paramethers()
+      iex> Simulator.Maps.get_map("clean").get_parameters()
       %Simulator.Maps.MapParams{width: 500, height: 500, structures: []}
 
 - Map names are resolved through `Simulator.Maps.get_map/1`.
@@ -64,7 +64,7 @@ Maps are registered in `Simulator.Maps` (`lib/simulator/maps/maps.ex`) inside th
          alias Simulator.Maps.MapParams
 
          @impl true
-         def get_paramethers(_opts \\ %{}) do
+         def get_parameters(_opts \\ %{}) do
            %MapParams{
              width: 800,
              height: 600,

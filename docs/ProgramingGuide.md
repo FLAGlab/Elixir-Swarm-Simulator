@@ -116,7 +116,7 @@ cond do
 end
 
 # with/else for chained fallible operations
-with {:ok, pid} <- SimulationExcutor.start_link(%{simulation: simulation}) do
+with {:ok, pid} <- SimulationExecutor.start_link(%{simulation: simulation}) do
   ...
 else
   {:error, reason} -> ...

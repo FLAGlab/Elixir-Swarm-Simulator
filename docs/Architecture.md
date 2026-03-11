@@ -86,7 +86,7 @@ These GenServers simulate aspects of the physical world. They are started and ma
 
 **ProximityDetector** (`proximity_detector.ex`): Every 30ms, reads all positions from the PositionTracker, calculates distances between all agent pairs, and detects when drones enter or leave each other's detection radius. Sends `notify_drone_entered/3` and `notify_drone_left/2` casts to affected agents. Configurable `detection_radius` (default: 50px).
 
-**CommunicationRelay** (`communication_relay.ex`): Receives data broadcasts from agents and delivers them only to valid neighbors (drones within detection range). When a drone calls `broadcast/3`, the relay checks the ProximityDetector's neighbor map and sends `receive_shared_data/3` to each neighbor. This simulates the physical limitation that drones can only communicate via radio with nearby drones, not with the entire swarm.
+**CommunicationRelay** (`communication_relay.ex`): Receives data broadcasts from agents and delivers them only to valid neighbors (drones within detection range). When a drone calls `broadcast/3`, the relay queries `ProximityDetector.get_neighbors/2` to determine the sender's neighbors and sends `receive_shared_data/3` to each one. This simulates the physical limitation that drones can only communicate via radio with nearby drones, not with the entire swarm.
 
 Registered by `simulation.type` name (one per simulation type).
 
@@ -97,7 +97,9 @@ The Manager is an **application-level component**, not part of the simulation it
 **Responsibilities:**
 - Maintains map: `simulation.id => executor_pid`
 - Prevents duplicate executions (returns `:already_running`)
+- Stops executions via `stop_execution/1`, terminating all child processes and freeing resources
 - Delegates position queries, agent detail queries, and commands to the appropriate Executor
+- Monitors executor processes and cleans up on unexpected termination
 - Serves as the sole communication bridge between controllers/channels and Executors
 
 ### Map System (`lib/simulator/maps/`)
@@ -109,7 +111,7 @@ Maps define the **static environment** for a simulation. They represent pre-know
 - **Unknown**: Objective locations. The Executor holds this information and notifies drones when they detect something through simulated sensors
 
 **Implementation:**
-- **Behaviour** (`map.ex`): `@callback get_paramethers(map()) :: MapParams.t()`
+- **Behaviour** (`map.ex`): `@callback get_parameters(map()) :: MapParams.t()`
 - **MapParams struct** (`map_params.ex`): `%{width, height, structures, spawn_point}`
 - **Registry** (`maps.ex`): maps string names to modules, defaults to `CleanMap`
 - **Implementations** in `impl/`: `CleanMap`, `BigCleanMap`, `CityMap`, `SquareObstacleMap`

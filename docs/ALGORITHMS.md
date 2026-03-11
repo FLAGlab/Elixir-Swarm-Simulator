@@ -146,7 +146,7 @@ Para algoritmos que necesitan compartir información entre drones:
 ### Algoritmo con conocimiento compartido (KnowledgeStore)
 
 Para algoritmos que necesitan compartir y gestionar conocimiento posicional entre drones,
-el módulo `Simulator.Algorithms.KnowledgeStore` provee utilidades reutilizables:
+el módulo `Simulator.Algorithms.Helpers.KnowledgeStore` provee utilidades reutilizables:
 
 - `decay(received_visited)` — elimina la posición más vieja de cada entry por tick
 - `merge(received_visited, incoming_knowledge)` — merge con anti-eco (filtra self) y frescura
@@ -157,7 +157,7 @@ el módulo `Simulator.Algorithms.KnowledgeStore` provee utilidades reutilizables
 Ejemplo de uso en `HeatmapWalk`:
 
     defmodule Simulator.Algorithms.HeatmapWalk do
-      alias Simulator.Algorithms.KnowledgeStore
+      alias Simulator.Algorithms.Helpers.KnowledgeStore
 
       @impl true
       def get_shared_data(state) do
@@ -184,7 +184,7 @@ El conocimiento se almacena por fuente original (`source_pid`), lo que:
 
 ## Utilidades de geometría
 
-El módulo `Simulator.Geometry` (`lib/simulator/geometry.ex`) provee funciones reutilizables
+El módulo `Simulator.Algorithms.Helpers.Geometry` (`lib/simulator/geometry.ex`) provee funciones reutilizables
 para algoritmos que necesitan detección de colisiones:
 
 - `clamp(value, min, max)` — limita un valor entre mínimo y máximo

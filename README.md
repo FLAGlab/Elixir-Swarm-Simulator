@@ -167,7 +167,7 @@ SimulationManager (singleton GenServer)
   │
   ├── tracks: %{simulation_id => executor_pid}
   │
-  └── SimulationExcutor (GenServer, one per simulation)
+  └── SimulationExecutor (GenServer, one per simulation)
         │
         ├── PositionTracker    (stores positions broadcast by agents)
         ├── ProximityDetector  (detects neighbor proximity)
@@ -178,8 +178,8 @@ SimulationManager (singleton GenServer)
         └── PointAgent N (GenServer + tick loop)
 ```
 
-- **SimulationManager** — Prevents duplicate executions per simulation ID. Delegates `start_excution` and `get_positions` calls to the appropriate executor.
-- **SimulationExcutor** — Spawns N `PointAgent` processes on init. Registered under `simulation.type` as its process name.
+- **SimulationManager** — Prevents duplicate executions per simulation ID. Delegates `start_execution` and `get_positions` calls to the appropriate executor.
+- **SimulationExecutor** — Spawns N `PointAgent` processes on init. Registered under `simulation.type` as its process name.
 - **PointAgent** — Each agent is a GenServer holding `%{id, position, algorithm, map, neighbors, tracker, relay}`. Every `@update_interval` ms it calls `algorithm.compute_step(state)` to compute the next position and updated state, then broadcasts position and shared data.
 
 ### 4. Real-Time Position Loop
@@ -187,7 +187,7 @@ SimulationManager (singleton GenServer)
 After the execution starts, `SimulationChannel` enters a tick loop:
 
 ```
-SimulationChannel                SimulationManager           SimulationExcutor        PointAgents
+SimulationChannel                SimulationManager           SimulationExecutor        PointAgents
        │                                │                          │                      │
        ├── :tick (every @tick_interval) │                          │                      │
        ├── {:get_positions, sim} ──────►│                          │                      │
@@ -222,7 +222,7 @@ The callback receives the full agent state (`%{position: %{x, y}, map: %MapParam
 Maps implement the `Simulator.Map` behaviour:
 
 ```elixir
-@callback get_paramethers(map()) :: MapParams.t()
+@callback get_parameters(map()) :: MapParams.t()
 ```
 
 Each map returns a `%MapParams{width, height, structures}` struct that defines spatial bounds. Algorithms use these bounds to constrain agent movement (e.g. `RandomWalk` clamps positions to `0..map.width` and `0..map.height`).
