@@ -13,28 +13,41 @@ defmodule Simulator.PointAgentTest do
 
     {:ok, tracker} = PositionTracker.start_link(name: tracker_name)
     {:ok, _proximity} = ProximityDetector.start_link(name: proximity_name, tracker: tracker_name)
-    {:ok, _relay} = CommunicationRelay.start_link(name: relay_name, tracker: tracker_name, proximity: proximity_name)
+
+    {:ok, _relay} =
+      CommunicationRelay.start_link(
+        name: relay_name,
+        tracker: tracker_name,
+        proximity: proximity_name
+      )
 
     %{tracker: tracker, tracker_name: tracker_name, relay_name: relay_name}
   end
 
-  test "start_link initializes agent with default position", %{tracker_name: tracker, relay_name: relay} do
-    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay)
-    assert %{x: 255, y: 255} = PointAgent.get_position(pid)
+  test "start_link initializes agent with default position", %{
+    tracker_name: tracker,
+    relay_name: relay
+  } do
+    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay, 1)
+    assert %{x: 250, y: 250} = PointAgent.get_position(pid)
   end
 
-  test "agent reports position to tracker after tick", %{tracker: tracker, tracker_name: tracker_name, relay_name: relay} do
-    {:ok, _pid} = PointAgent.start_link("static", "clean", tracker_name, relay)
+  test "agent reports position to tracker after tick", %{
+    tracker: tracker,
+    tracker_name: tracker_name,
+    relay_name: relay
+  } do
+    {:ok, _pid} = PointAgent.start_link("static", "clean", tracker_name, relay, 1)
 
     Process.sleep(50)
 
     %{positions: positions} = PositionTracker.get_positions(tracker)
     assert length(positions) == 1
-    assert %{x: 255, y: 255} = hd(positions)
+    assert %{x: 250, y: 250} = hd(positions)
   end
 
   test "notify_drone_entered adds neighbor to state", %{tracker_name: tracker, relay_name: relay} do
-    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay)
+    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay, 1)
     fake_neighbor = self()
 
     PointAgent.notify_drone_entered(pid, fake_neighbor, %{x: 100, y: 100})
@@ -45,8 +58,11 @@ defmodule Simulator.PointAgentTest do
     assert state.neighbors[fake_neighbor] == %{x: 100, y: 100}
   end
 
-  test "notify_drone_left removes neighbor from state", %{tracker_name: tracker, relay_name: relay} do
-    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay)
+  test "notify_drone_left removes neighbor from state", %{
+    tracker_name: tracker,
+    relay_name: relay
+  } do
+    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay, 1)
     fake_neighbor = self()
 
     PointAgent.notify_drone_entered(pid, fake_neighbor, %{x: 100, y: 100})
@@ -59,7 +75,7 @@ defmodule Simulator.PointAgentTest do
   end
 
   test "receive_shared_data delegates to algorithm", %{tracker_name: tracker, relay_name: relay} do
-    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay)
+    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay, 1)
     fake_sender = self()
 
     # Static algorithm doesn't implement handle_received_data,
@@ -68,6 +84,6 @@ defmodule Simulator.PointAgentTest do
     Process.sleep(10)
 
     state = :sys.get_state(pid)
-    assert state.position == %{x: 255, y: 255}
+    assert state.position == %{x: 250, y: 250}
   end
 end

@@ -30,10 +30,12 @@ defmodule Simulator.Environment.ProximityDetector do
   """
   def start_link(opts) do
     name = Keyword.fetch!(opts, :name)
+
     config = %{
       tracker: Keyword.fetch!(opts, :tracker),
       detection_radius: Keyword.get(opts, :detection_radius, @default_detection_radius)
     }
+
     GenServer.start_link(__MODULE__, config, name: name)
   end
 

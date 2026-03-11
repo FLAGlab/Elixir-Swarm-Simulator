@@ -33,6 +33,13 @@ defmodule Simulator.SimulationExcutor do
   end
 
   @doc """
+  Returns the detail summary of a specific agent by its numeric ID.
+  """
+  def get_agent_detail(pid, agent_id) do
+    GenServer.call(pid, {:get_agent_detail, agent_id})
+  end
+
+  @doc """
   Starts a new simulation executor for the given `simulation` struct.
 
   Expects a map `%{simulation: %Simulation{}}`. The GenServer is registered
@@ -57,24 +64,27 @@ defmodule Simulator.SimulationExcutor do
 
     {:ok, tracker_pid} = PositionTracker.start_link(name: tracker_name)
 
-    {:ok, proximity_pid} = ProximityDetector.start_link(
-      name: proximity_name,
-      tracker: tracker_name
-    )
+    {:ok, proximity_pid} =
+      ProximityDetector.start_link(
+        name: proximity_name,
+        tracker: tracker_name
+      )
 
-    {:ok, relay_pid} = CommunicationRelay.start_link(
-      name: relay_name,
-      tracker: tracker_name,
-      proximity: proximity_name
-    )
+    {:ok, relay_pid} =
+      CommunicationRelay.start_link(
+        name: relay_name,
+        tracker: tracker_name,
+        proximity: proximity_name
+      )
 
     agents = spawn_agents(simulation, tracker_name, relay_name)
 
-    new_state = state
-    |> Map.put(:agents, agents)
-    |> Map.put(:tracker, tracker_pid)
-    |> Map.put(:proximity_detector, proximity_pid)
-    |> Map.put(:relay, relay_pid)
+    new_state =
+      state
+      |> Map.put(:agents, agents)
+      |> Map.put(:tracker, tracker_pid)
+      |> Map.put(:proximity_detector, proximity_pid)
+      |> Map.put(:relay, relay_pid)
 
     {:ok, new_state}
   end
@@ -83,6 +93,18 @@ defmodule Simulator.SimulationExcutor do
   def handle_call(:get_positions, _from, state) do
     data = PositionTracker.get_positions(state.tracker)
     {:reply, data, state}
+  end
+
+  @impl true
+  def handle_call({:get_agent_detail, agent_id}, _from, state) do
+    case Map.fetch(state.agents, agent_id) do
+      {:ok, agent_pid} ->
+        detail = PointAgent.get_detail(agent_pid)
+        {:reply, {:ok, detail}, state}
+
+      :error ->
+        {:reply, :not_found, state}
+    end
   end
 
   @impl true
@@ -98,9 +120,9 @@ defmodule Simulator.SimulationExcutor do
   # Private ----------------------------------------------------------
 
   defp spawn_agents(%{swarm: count, algorithm: algorithm, map: map}, tracker, relay) do
-    for _ <- 1..count do
-      {:ok, pid} = PointAgent.start_link(algorithm, map, tracker, relay)
-      pid
+    for id <- 1..count, into: %{} do
+      {:ok, pid} = PointAgent.start_link(algorithm, map, tracker, relay, id)
+      {id, pid}
     end
   end
 

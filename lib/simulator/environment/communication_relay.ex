@@ -26,10 +26,12 @@ defmodule Simulator.Environment.CommunicationRelay do
   """
   def start_link(opts) do
     name = Keyword.fetch!(opts, :name)
+
     config = %{
       tracker: Keyword.fetch!(opts, :tracker),
       proximity: Keyword.fetch!(opts, :proximity)
     }
+
     GenServer.start_link(__MODULE__, config, name: name)
   end
 

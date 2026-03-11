@@ -46,7 +46,10 @@ defmodule SimulatorWeb.Layouts do
           </small>
         </a>
         <div class="flex items-center gap-4">
-          <a href={~p"/simulations"} class="text-sm font-semibold leading-6 hover:text-primary transition">
+          <a
+            href={~p"/simulations"}
+            class="text-sm font-semibold leading-6 hover:text-primary transition"
+          >
             Simulations
           </a>
           <.theme_toggle />

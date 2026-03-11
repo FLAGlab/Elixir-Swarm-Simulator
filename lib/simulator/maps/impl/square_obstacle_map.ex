@@ -12,6 +12,7 @@ defmodule Simulator.Maps.SquareObstacleMap do
     %MapParams{
       width: 1000,
       height: 500,
+      spawn_point: %{x: 200, y: 250},
       structures: [
         %{
           id: 1,

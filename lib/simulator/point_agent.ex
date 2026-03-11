@@ -35,12 +35,13 @@ defmodule PointAgent do
   The `tracker` is the PositionTracker where the agent reports its position.
   The `relay` is the CommunicationRelay where the agent broadcasts shared data.
   """
-  def start_link(algo, map, tracker, relay) do
+  def start_link(algo, map, tracker, relay, id) do
     GenServer.start_link(__MODULE__, %{
       algo: algo,
       map: map,
       tracker: tracker,
-      relay: relay
+      relay: relay,
+      id: id
     })
   end
 
@@ -48,6 +49,14 @@ defmodule PointAgent do
   Returns the current `%{x, y}` position of the agent.
   """
   def get_position(pid), do: GenServer.call(pid, :get_position)
+
+  @doc """
+  Returns a detail summary of the agent's current state.
+
+  Includes id, position, color, neighbor count, and any algorithm-specific
+  keys (e.g. `:target` for AimRandomWalk).
+  """
+  def get_detail(pid), do: GenServer.call(pid, :get_detail)
 
   @doc """
   Notifies the agent that another drone entered its detection radius.
@@ -82,10 +91,13 @@ defmodule PointAgent do
 
   @impl true
   def init(config) do
+    map = Maps.get_map(config.map).get_paramethers()
+
     state = %{
-      position: %{x: 255, y: 255},
+      id: config.id,
+      position: map.spawn_point,
       algorithm: Algorithms.get_algorithm(config.algo),
-      map: Maps.get_map(config.map).get_paramethers(),
+      map: map,
       neighbors: %{},
       tracker: config.tracker,
       relay: config.relay
@@ -98,6 +110,21 @@ defmodule PointAgent do
   @impl true
   def handle_call(:get_position, _from, state) do
     {:reply, state.position, state}
+  end
+
+  @impl true
+  def handle_call(:get_detail, _from, state) do
+    color = if map_size(state.neighbors) > 0, do: "neighbor", else: "alone"
+
+    detail = %{
+      id: state.id,
+      position: state.position,
+      color: color,
+      neighbors_count: map_size(state.neighbors),
+      algorithm_state: extract_algorithm_state(state)
+    }
+
+    {:reply, detail, state}
   end
 
   @impl true
@@ -120,10 +147,17 @@ defmodule PointAgent do
 
   @impl true
   def handle_info(:tick, state) do
-    new_position = state.algorithm.update_position(state)
-    new_state = %{state | position: new_position}
+    {new_position, updated_state} = state.algorithm.compute_step(state)
+    new_state = %{updated_state | position: new_position}
 
-    PositionTracker.report_position(state.tracker, self(), new_position)
+    color = if map_size(new_state.neighbors) > 0, do: "neighbor", else: "alone"
+
+    report_data =
+      new_position
+      |> Map.put(:color, color)
+      |> Map.put(:id, new_state.id)
+
+    PositionTracker.report_position(state.tracker, self(), report_data)
 
     shared_data = Algorithm.shared_data(state.algorithm, new_state)
 
@@ -136,6 +170,13 @@ defmodule PointAgent do
   end
 
   # Private ----------------------------------------------------------
+
+  @system_keys [:id, :position, :algorithm, :map, :neighbors, :tracker, :relay]
+
+  defp extract_algorithm_state(state) do
+    algo_state = Map.drop(state, @system_keys)
+    Algorithm.format_state(state.algorithm, algo_state)
+  end
 
   defp schedule_tick do
     Process.send_after(self(), :tick, @update_interval)

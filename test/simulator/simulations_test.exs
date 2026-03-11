@@ -37,7 +37,9 @@ defmodule Simulator.SimulationsTest do
       simulation = simulation_fixture()
       update_attrs = %{type: "some updated type", algorithm: "some updated algorithm", swarm: 43}
 
-      assert {:ok, %Simulation{} = simulation} = Simulations.update_simulation(simulation, update_attrs)
+      assert {:ok, %Simulation{} = simulation} =
+               Simulations.update_simulation(simulation, update_attrs)
+
       assert simulation.type == "some updated type"
       assert simulation.algorithm == "some updated algorithm"
       assert simulation.swarm == 43
@@ -45,7 +47,10 @@ defmodule Simulator.SimulationsTest do
 
     test "update_simulation/2 with invalid data returns error changeset" do
       simulation = simulation_fixture()
-      assert {:error, %Ecto.Changeset{}} = Simulations.update_simulation(simulation, @invalid_attrs)
+
+      assert {:error, %Ecto.Changeset{}} =
+               Simulations.update_simulation(simulation, @invalid_attrs)
+
       assert simulation == Simulations.get_simulation!(simulation.id)
     end
 

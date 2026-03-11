@@ -4,7 +4,8 @@ defmodule Simulator.Algorithm do
 
   Algorithms are the brain of the drone. They define three capabilities:
 
-  - **Movement**: `update_position/1` decides where the drone moves next
+  - **Movement**: `compute_step/1` decides where the drone moves next and
+    returns the updated algorithm state
   - **Broadcasting**: `get_shared_data/1` decides what information the drone
     shares with nearby drones (e.g., explored zones, detected targets)
   - **Receiving**: `handle_received_data/3` decides how the drone processes
@@ -20,12 +21,14 @@ defmodule Simulator.Algorithm do
   """
 
   @doc """
-  Decides the drone's next position based on its local state.
+  Computes the drone's next step based on its local state.
 
   Receives the full agent state (`%{position, map, neighbors, ...}`) and
-  returns the new `%{x, y}` position map.
+  returns a tuple `{new_position, updated_state}` where `new_position` is
+  the new `%{x, y}` and `updated_state` is the agent state with any
+  algorithm-specific keys added or modified.
   """
-  @callback update_position(state :: map()) :: map()
+  @callback compute_step(state :: map()) :: {map(), map()}
 
   @doc """
   Returns the data this drone wants to broadcast to its neighbors.
@@ -45,7 +48,19 @@ defmodule Simulator.Algorithm do
   """
   @callback handle_received_data(sender :: pid(), data :: map(), state :: map()) :: map()
 
-  @optional_callbacks [get_shared_data: 1, handle_received_data: 3]
+  @doc """
+  Prepares the algorithm-specific state for external consumption.
+
+  Called when the agent needs to expose its algorithm state (e.g. for
+  the detail panel). The algorithm can merge internal structures, remove
+  implementation details, or reshape data as needed. By default returns
+  the state unchanged.
+  """
+  @callback format_state(state :: map()) :: map()
+
+  @optional_callbacks [get_shared_data: 1, handle_received_data: 3, format_state: 1]
+
+  # Helpers ----------------------------------------------------------
 
   @doc """
   Calls `get_shared_data/1` on the algorithm module if implemented,
@@ -66,6 +81,18 @@ defmodule Simulator.Algorithm do
   def receive_data(algorithm, sender, data, state) do
     if function_exported?(algorithm, :handle_received_data, 3) do
       algorithm.handle_received_data(sender, data, state)
+    else
+      state
+    end
+  end
+
+  @doc """
+  Calls `format_state/1` on the algorithm module if implemented,
+  otherwise returns the state unchanged.
+  """
+  def format_state(algorithm, state) do
+    if function_exported?(algorithm, :format_state, 1) do
+      algorithm.format_state(state)
     else
       state
     end

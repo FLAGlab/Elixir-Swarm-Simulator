@@ -5,20 +5,22 @@ Este directorio contiene implementaciones de algoritmos para los agentes (`lib/s
 ## Requisitos
 
 - Cada algoritmo debe ser un módulo que implemente la behaviour `Simulator.Algorithm`.
-- Debe definir `update_position(state)` (obligatorio) que reciba el `state` del agente y devuelva el nuevo `%{x, y}` de posición.
+- Debe definir `compute_step(state)` (obligatorio) que reciba el `state` del agente y devuelva `{new_position, updated_state}`.
 - Opcionalmente puede definir `get_shared_data(state)` y `handle_received_data(sender, data, state)` para habilitar comunicación entre drones.
 
 ## Callbacks
 
-### `update_position(state)` — obligatorio
+### `compute_step(state)` — obligatorio
 
-Decide el próximo movimiento del dron. Recibe el estado completo del agente:
+Computa el siguiente paso del dron. Recibe el estado completo del agente:
 - `state.position` — posición actual `%{x, y}`
 - `state.map` — `%MapParams{width, height, structures}`
 - `state.neighbors` — `%{pid => %{x, y}}` drones detectados en rango
 - Cualquier key adicional que el algoritmo haya agregado al estado
 
-Devuelve el nuevo `%{x, y}`.
+Devuelve una tupla `{new_position, updated_state}` donde:
+- `new_position` — el nuevo `%{x, y}`
+- `updated_state` — el estado del agente con cualquier key interna del algoritmo actualizada
 
 ### `get_shared_data(state)` — opcional
 
@@ -63,10 +65,11 @@ Procesa datos recibidos de un dron vecino. Llamado por el agente cuando el Commu
          @behaviour Simulator.Algorithm
 
          @impl true
-         def update_position(%{position: position, map: map}) do
+         def compute_step(%{position: position, map: map} = state) do
            # Calcular nueva posición usando position.x, position.y
            # y los límites map.width, map.height.
-           %{position | x: new_x, y: new_y}
+           new_position = %{position | x: new_x, y: new_y}
+           {new_position, state}
          end
        end
 
@@ -79,6 +82,23 @@ Procesa datos recibidos de un dron vecino. Llamado por el agente cuando el Commu
          "my_algo" => MyAlgo
        }
 
+### Algoritmo con estado interno
+
+Para algoritmos que necesitan persistir estado entre ticks (como un target o datos acumulados),
+se agregan keys al estado del agente y se retornan en `updated_state`:
+
+    defmodule Simulator.Algorithms.AimRandomWalk do
+      @moduledoc "Camina hacia un objetivo random, recalcula al llegar o colisionar."
+      @behaviour Simulator.Algorithm
+
+      @impl true
+      def compute_step(%{position: position, map: map} = state) do
+        target = Map.get(state, :target) || generate_target(map)
+        # ... lógica de movimiento hacia target
+        {new_position, Map.put(state, :target, new_target)}
+      end
+    end
+
 ### Algoritmo con comunicación
 
 Para algoritmos que necesitan compartir información entre drones:
@@ -88,11 +108,12 @@ Para algoritmos que necesitan compartir información entre drones:
       @behaviour Simulator.Algorithm
 
       @impl true
-      def update_position(%{position: position, map: map} = state) do
+      def compute_step(%{position: position, map: map} = state) do
         # Puede usar state.neighbors y datos recibidos para decidir movimiento
         messages = Map.get(state, :received_messages, [])
         # ... lógica de movimiento usando mensajes de vecinos
-        %{position | x: new_x, y: new_y}
+        new_position = %{position | x: new_x, y: new_y}
+        {new_position, state}
       end
 
       @impl true
@@ -103,11 +124,20 @@ Para algoritmos que necesitan compartir información entre drones:
 
       @impl true
       def handle_received_data(_sender, data, state) do
-        # Almacenar mensajes recibidos para usar en update_position
+        # Almacenar mensajes recibidos para usar en compute_step
         messages = Map.get(state, :received_messages, [])
         Map.put(state, :received_messages, [data | messages])
       end
     end
+
+## Utilidades de geometría
+
+El módulo `Simulator.Geometry` (`lib/simulator/geometry.ex`) provee funciones reutilizables
+para algoritmos que necesitan detección de colisiones:
+
+- `clamp(value, min, max)` — limita un valor entre mínimo y máximo
+- `point_in_polygon?({x, y}, points)` — verifica si un punto está dentro de un polígono
+- `segment_intersects_polygon?(p1, p2, points)` — verifica si un segmento cruza un polígono
 
 ## Sistema de mapas
 
@@ -117,8 +147,8 @@ limitar el movimiento de los agentes dentro del espacio definido.
 
 ## Notas
 
-- Las implementaciones existentes están en `lib/simulator/algorithms/impl/` (`RandomWalk`, `Static`).
-- `PointAgent` es un GenServer que llama `algorithm.update_position(state)` en cada tick (cada 30ms).
+- Las implementaciones existentes están en `lib/simulator/algorithms/impl/` (`RandomWalk`, `Static`, `AimRandomWalk`).
+- `PointAgent` es un GenServer que llama `algorithm.compute_step(state)` en cada tick (cada 30ms).
 - Los callbacks opcionales se invocan a través de helpers en `Simulator.Algorithm`:
   `Algorithm.shared_data(module, state)` y `Algorithm.receive_data(module, sender, data, state)`.
   Estos verifican si el callback está implementado antes de llamarlo.

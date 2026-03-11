@@ -84,7 +84,7 @@ Prefer pattern matching in function heads over body matching when possible:
 
 ```elixir
 # Good: function head
-def update_position(%{position: position, map: map}) do
+def compute_step(%{position: position, map: map} = state) do
   ...
 end
 

@@ -8,16 +8,17 @@ defmodule Simulator.AlgorithmsTest do
 
   test "static algorithm leaves position unchanged" do
     state = %{position: %{x: 100, y: 200}, map: @default_map}
-    assert Static.update_position(state) == %{x: 100, y: 200}
+    {position, _new_state} = Static.compute_step(state)
+    assert position == %{x: 100, y: 200}
   end
 
   test "random walk keeps position within bounds" do
     state = %{position: %{x: 0, y: 0}, map: @default_map}
-    new = RandomWalk.update_position(state)
+    {new_position, _new_state} = RandomWalk.compute_step(state)
 
-    assert new.x in 0..500
-    assert new.y in 0..500
-    assert is_integer(new.x)
-    assert is_integer(new.y)
+    assert new_position.x in 0..500
+    assert new_position.y in 0..500
+    assert is_integer(new_position.x)
+    assert is_integer(new_position.y)
   end
 end

@@ -7,7 +7,13 @@ defmodule SimulatorWeb.SimulationController do
   def index(conn, _params) do
     simulations = Simulations.list_simulations()
     changeset = Simulations.change_simulation(%Simulation{})
-    render(conn, :index, simulations: simulations, changeset: changeset, algorithms: get_algorithms(), maps: get_maps())
+
+    render(conn, :index,
+      simulations: simulations,
+      changeset: changeset,
+      algorithms: get_algorithms(),
+      maps: get_maps()
+    )
   end
 
   def new(conn, _params) do
@@ -26,7 +32,12 @@ defmodule SimulatorWeb.SimulationController do
         |> redirect(to: ~p"/simulations")
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        render(conn, :index, simulations: simulations, changeset: changeset, algorithms: get_algorithms(), maps: get_maps())
+        render(conn, :index,
+          simulations: simulations,
+          changeset: changeset,
+          algorithms: get_algorithms(),
+          maps: get_maps()
+        )
     end
   end
 
@@ -38,7 +49,13 @@ defmodule SimulatorWeb.SimulationController do
   def edit(conn, %{"id" => id}) do
     simulation = Simulations.get_simulation!(id)
     changeset = Simulations.change_simulation(simulation)
-    render(conn, :edit, simulation: simulation, changeset: changeset, algorithms: get_algorithms(), maps: get_maps())
+
+    render(conn, :edit,
+      simulation: simulation,
+      changeset: changeset,
+      algorithms: get_algorithms(),
+      maps: get_maps()
+    )
   end
 
   def update(conn, %{"id" => id, "simulation" => simulation_params}) do
@@ -51,7 +68,12 @@ defmodule SimulatorWeb.SimulationController do
         |> redirect(to: ~p"/simulations/#{simulation}")
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        render(conn, :edit, simulation: simulation, changeset: changeset, algorithms: get_algorithms(), maps: get_maps())
+        render(conn, :edit,
+          simulation: simulation,
+          changeset: changeset,
+          algorithms: get_algorithms(),
+          maps: get_maps()
+        )
     end
   end
 

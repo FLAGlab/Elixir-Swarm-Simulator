@@ -3,5 +3,5 @@ defmodule Simulator.Algorithms.Static do
   @behaviour Simulator.Algorithm
 
   @impl true
-  def update_position(%{position: position, map: _map}), do: position
+  def compute_step(%{position: position} = state), do: {position, state}
 end

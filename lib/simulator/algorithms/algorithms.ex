@@ -6,9 +6,11 @@ defmodule Simulator.Algorithms do
   behaviour. When a name is not found, defaults to `RandomWalk`.
   """
 
-  alias Simulator.Algorithms.{RandomWalk, Static}
+  alias Simulator.Algorithms.{AimRandomWalk, HeatmapWalk, RandomWalk, Static}
 
   @available_algorithms %{
+    "aim_random_walk" => AimRandomWalk,
+    "heatmap_walk" => HeatmapWalk,
     "random_walk" => RandomWalk,
     "static" => Static
   }
@@ -36,6 +38,7 @@ defmodule Simulator.Algorithms do
   """
   @spec get_algorithm(String.t() | module()) :: module()
   def get_algorithm(name) when is_atom(name), do: name
+
   def get_algorithm(name) do
     Map.get(@available_algorithms, name, RandomWalk)
   end

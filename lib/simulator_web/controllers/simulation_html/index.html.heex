@@ -12,12 +12,22 @@
       <div class="lg:col-span-2">
         <div :if={@simulations == []} class="rounded-box bg-base-200 p-12 text-center">
           <.icon name="hero-beaker" class="size-12 text-base-content/30 mx-auto" />
-          <p class="mt-4 text-base-content/60 text-sm">No simulations yet. Create one to get started.</p>
+          <p class="mt-4 text-base-content/60 text-sm">
+            No simulations yet. Create one to get started.
+          </p>
         </div>
 
         <div :if={@simulations != []} class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div :for={simulation <- @simulations} class="group relative rounded-box bg-base-200 p-5 transition hover:bg-base-300">
-            <.link navigate={~p"/simulations/#{simulation}"} class="absolute inset-0 rounded-box z-0"><span class="sr-only">View</span></.link>
+          <div
+            :for={simulation <- @simulations}
+            class="group relative rounded-box bg-base-200 p-5 transition hover:bg-base-300"
+          >
+            <.link
+              navigate={~p"/simulations/#{simulation}"}
+              class="absolute inset-0 rounded-box z-0"
+            >
+              <span class="sr-only">View</span>
+            </.link>
             <div class="relative z-10 pointer-events-none">
               <div class="flex items-center justify-between mb-3">
                 <span class="badge badge-primary badge-sm">{simulation.algorithm}</span>
@@ -60,8 +70,16 @@
       <div class="lg:col-span-1">
         <div class="rounded-box bg-base-200 p-6 sticky top-24">
           <h2 class="text-lg font-semibold mb-1">New Simulation</h2>
-          <p class="text-sm text-base-content/60 mb-5">Configure and create a new swarm simulation.</p>
-          <.simulation_form changeset={@changeset} action={~p"/simulations"} return_to={~p"/simulations"} algorithms={@algorithms} maps={@maps} />
+          <p class="text-sm text-base-content/60 mb-5">
+            Configure and create a new swarm simulation.
+          </p>
+          <.simulation_form
+            changeset={@changeset}
+            action={~p"/simulations"}
+            return_to={~p"/simulations"}
+            algorithms={@algorithms}
+            maps={@maps}
+          />
         </div>
       </div>
     </div>

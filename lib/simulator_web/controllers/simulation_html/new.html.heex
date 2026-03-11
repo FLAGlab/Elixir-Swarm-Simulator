@@ -11,7 +11,13 @@
     </div>
 
     <div class="rounded-box bg-base-200 p-6">
-      <.simulation_form changeset={@changeset} action={~p"/simulations"} return_to={~p"/simulations"} algorithms={@algorithms} maps={@maps} />
+      <.simulation_form
+        changeset={@changeset}
+        action={~p"/simulations"}
+        return_to={~p"/simulations"}
+        algorithms={@algorithms}
+        maps={@maps}
+      />
     </div>
   </div>
 </Layouts.app>

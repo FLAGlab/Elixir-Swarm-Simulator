@@ -42,11 +42,11 @@ Algorithms are the **brain of the drone**. They are pluggable components that gi
 
 - **Information constraint**: An algorithm receives only the agent's local state (`%{position, map, neighbors, ...}`). It must never reach outside this state for information
 - **Three responsibilities** defined by the `Simulator.Algorithm` behaviour:
-  1. **Movement**: `update_position(state)` — decides the drone's next position (required)
+  1. **Movement**: `compute_step(state)` — computes the drone's next position and updated state (required)
   2. **Broadcasting**: `get_shared_data(state)` — decides what data to share with neighbors (optional, defaults to `%{}`)
   3. **Receiving**: `handle_received_data(sender, data, state)` — processes data received from a neighbor (optional, defaults to no-op)
 - **Registry** (`algorithms.ex`): maps string names to modules, also accepts module atoms directly. Defaults to `RandomWalk`
-- **Implementations** in `impl/`: `RandomWalk`, `Static`
+- **Implementations** in `impl/`: `RandomWalk`, `Static`, `AimRandomWalk`
 
 See [ALGORITHMS.md](./ALGORITHMS.md) for details on implementing new algorithms.
 
@@ -202,7 +202,7 @@ JS receives "positions" event
 ### Step 6: Agent tick cycle (every 30ms, independent per agent)
 ```
 PointAgent.handle_info(:tick)
-  |-- algorithm.update_position(state) --> new position
+  |-- algorithm.compute_step(state) --> {new_position, updated_state}
   |-- PositionTracker.report_position(tracker, self(), position)
   |-- algorithm.get_shared_data(state) --> data to broadcast
   |-- CommunicationRelay.broadcast(relay, self(), data) (if data != %{})

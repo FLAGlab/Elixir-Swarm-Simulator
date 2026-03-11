@@ -168,7 +168,7 @@ SimulationManager (singleton GenServer)
 
 - **SimulationManager** — Prevents duplicate executions per simulation ID. Delegates `start_excution` and `get_positions` calls to the appropriate executor.
 - **SimulationExcutor** — Spawns N `PointAgent` processes on init. Registered under `simulation.type` as its process name.
-- **PointAgent** — Each agent is an `Agent` process holding `%{position, algorithm, map}`. A `spawn_link`-ed process sends `:tick` every `@update_interval` ms, calling `algorithm.update_position(state)` to compute the next position.
+- **PointAgent** — Each agent is an `Agent` process holding `%{position, algorithm, map}`. A `spawn_link`-ed process sends `:tick` every `@update_interval` ms, calling `algorithm.compute_step(state)` to compute the next position and updated state.
 
 ### 4. Real-Time Position Loop
 
@@ -190,7 +190,7 @@ SimulationChannel                SimulationManager           SimulationExcutor  
        │   Meanwhile, each PointAgent ticks independently:                                │
        │                                                           ┌── :tick ─────────────│
        │                                                           │  algorithm            │
-       │                                                           │  .update_position()   │
+       │                                                           │  .compute_step()      │
        │                                                           │  updates position     │
        │                                                           └──────────────────────►│
 ```
@@ -200,10 +200,10 @@ SimulationChannel                SimulationManager           SimulationExcutor  
 Algorithms implement the `Simulator.Algorithm` behaviour:
 
 ```elixir
-@callback update_position(map()) :: map()
+@callback compute_step(map()) :: {map(), map()}
 ```
 
-The callback receives the full agent state (`%{position: %{x, y}, map: %MapParams{}}`) and must return the new `%{x, y}` position. Available algorithms are registered in `Simulator.Algorithms` (`@available_algorithms` map). Unknown names fall back to `RandomWalk`.
+The callback receives the full agent state (`%{position: %{x, y}, map: %MapParams{}}`) and must return `{new_position, updated_state}`. Available algorithms are registered in `Simulator.Algorithms` (`@available_algorithms` map). Unknown names fall back to `RandomWalk`.
 
 ### 6. Map System
 

@@ -25,10 +25,12 @@ defmodule Simulator.SimulationManager do
   """
   def start_link(opts) do
     interval = Keyword.get(opts, :interval, @default_interval)
+
     initial_state = %{
       :interval => interval,
       :executions => %{}
     }
+
     GenServer.start_link(__MODULE__, initial_state, name: __MODULE__)
   end
 
@@ -64,11 +66,11 @@ defmodule Simulator.SimulationManager do
 
   @impl true
   def handle_call({:get_positions, %{:simulation => simulation}}, _from, state) do
-
     case Map.fetch(state.executions, simulation.id) do
       {:ok, pid} ->
-        data  = SimulationExcutor.get_positions(pid)
+        data = SimulationExcutor.get_positions(pid)
         {:reply, data, state}
+
       :error ->
         Logger.info("SimulationManager: no executor found for simulation: #{simulation.type}")
         {:reply, :not_found, state}
@@ -76,9 +78,25 @@ defmodule Simulator.SimulationManager do
   end
 
   @impl true
+  def handle_call(
+        {:get_agent_detail, %{simulation: simulation, agent_id: agent_id}},
+        _from,
+        state
+      ) do
+    case Map.fetch(state.executions, simulation.id) do
+      {:ok, pid} ->
+        result = SimulationExcutor.get_agent_detail(pid, agent_id)
+        {:reply, result, state}
+
+      :error ->
+        {:reply, :not_found, state}
+    end
+  end
+
+  @impl true
   def handle_info(:print, state) do
     Logger.info("SimulationManager: heartbeat at #{DateTime.utc_now()}")
-    #schedule(interval)
+    # schedule(interval)
     {:noreply, state}
   end
 
