@@ -6,11 +6,14 @@ defmodule Simulator.Algorithms do
   behaviour. When a name is not found, defaults to `RandomWalk`.
   """
 
-  alias Simulator.Algorithms.{AimRandomWalk, HeatmapWalk, RandomWalk, Static}
+  alias Simulator.Algorithms.{AimRandomWalk, AntColony, GreyWolf, HeatmapWalk, ParticleSwarm, RandomWalk, Static}
 
   @available_algorithms %{
     "aim_random_walk" => AimRandomWalk,
+    "ant_colony" => AntColony,
+    "grey_wolf" => GreyWolf,
     "heatmap_walk" => HeatmapWalk,
+    "particle_swarm" => ParticleSwarm,
     "random_walk" => RandomWalk,
     "static" => Static
   }

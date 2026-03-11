@@ -37,8 +37,8 @@ export function initSimulationCanvas() {
   }
 
   let selectedDroneId = null
-  let currentHeatmap = null
-  const heatCellSize = 20
+  let currentOverlay = null
+  const cellSize = 20
 
   // --- Structures ---
 
@@ -64,31 +64,41 @@ export function initSimulationCanvas() {
     ctx.restore()
   }
 
-  // --- Heatmap overlay ---
+  // --- Cell overlay ---
 
-  function drawHeatmap() {
-    if (!currentHeatmap || currentHeatmap.length === 0) return
+  function drawOverlay() {
+    if (!currentOverlay) return
 
+    const {cells, color} = currentOverlay
+    if (!cells || cells.length === 0) return
+
+    ctx.save()
+    cells.forEach(({x, y, intensity}) => {
+      ctx.fillStyle = `rgba(${color}, ${0.1 + intensity * 0.5})`
+      ctx.fillRect(x, y, cellSize, cellSize)
+    })
+    ctx.restore()
+  }
+
+  function buildHeatmapOverlay(visited) {
     const grid = {}
-    currentHeatmap.forEach(pos => {
-      const col = Math.floor(pos.x / heatCellSize)
-      const row = Math.floor(pos.y / heatCellSize)
+    visited.forEach(pos => {
+      const col = Math.floor(pos.x / cellSize)
+      const row = Math.floor(pos.y / cellSize)
       const key = `${col},${row}`
       grid[key] = (grid[key] || 0) + 1
     })
 
     const counts = Object.values(grid)
     const maxCount = Math.max(...counts)
-    if (maxCount === 0) return
+    if (maxCount === 0) return null
 
-    ctx.save()
-    Object.entries(grid).forEach(([key, count]) => {
+    const cells = Object.entries(grid).map(([key, count]) => {
       const [col, row] = key.split(",").map(Number)
-      const intensity = count / maxCount
-      ctx.fillStyle = `rgba(239, 68, 68, ${0.1 + intensity * 0.5})`
-      ctx.fillRect(col * heatCellSize, row * heatCellSize, heatCellSize, heatCellSize)
+      return {x: col * cellSize, y: row * cellSize, intensity: count / maxCount}
     })
-    ctx.restore()
+
+    return {cells, color: "239, 68, 68"}
   }
 
   // --- Drone grid ---
@@ -105,7 +115,7 @@ export function initSimulationCanvas() {
       const id = parseInt(cell.dataset.droneId, 10)
       if (selectedDroneId === id) {
         selectedDroneId = null
-        currentHeatmap = null
+        currentOverlay = null
         currentChannel.push("deselect_drone", {})
         updateDetailPanel(null)
       } else {
@@ -177,7 +187,7 @@ export function initSimulationCanvas() {
 
     const colors = agentColors[detail.color] || agentColors.alone
     const algoEntries = Object.entries(detail.algorithm_state || {})
-      .filter(([key]) => key !== "visited")
+      .filter(([key]) => key !== "visited" && key !== "pheromone_overlay")
 
     let algoHtml = ""
     if (algoEntries.length > 0) {
@@ -208,7 +218,7 @@ export function initSimulationCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
     drawStructures()
-    drawHeatmap()
+    drawOverlay()
 
     ctx.lineWidth = 2
     positions.forEach(p => {
@@ -228,7 +238,16 @@ export function initSimulationCanvas() {
   })
 
   currentChannel.on("drone_detail", (detail) => {
-    currentHeatmap = (detail.algorithm_state || {}).visited || null
+    const algo = detail.algorithm_state || {}
+
+    if (algo.visited) {
+      currentOverlay = buildHeatmapOverlay(algo.visited)
+    } else if (algo.pheromone_overlay) {
+      currentOverlay = {cells: algo.pheromone_overlay, color: "59, 130, 246"}
+    } else {
+      currentOverlay = null
+    }
+
     updateDetailPanel(detail)
   })
 
