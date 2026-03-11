@@ -28,8 +28,8 @@ defmodule Simulator.PointAgentTest do
     tracker_name: tracker,
     relay_name: relay
   } do
-    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay, 1)
-    assert %{x: 250, y: 250} = PointAgent.get_position(pid)
+    {:ok, pid} = Simulator.PointAgent.start_link("static", "clean", tracker, relay, 1)
+    assert %{x: 250, y: 250} = Simulator.PointAgent.get_position(pid)
   end
 
   test "agent reports position to tracker after tick", %{
@@ -37,7 +37,7 @@ defmodule Simulator.PointAgentTest do
     tracker_name: tracker_name,
     relay_name: relay
   } do
-    {:ok, _pid} = PointAgent.start_link("static", "clean", tracker_name, relay, 1)
+    {:ok, _pid} = Simulator.PointAgent.start_link("static", "clean", tracker_name, relay, 1)
 
     Process.sleep(50)
 
@@ -47,10 +47,10 @@ defmodule Simulator.PointAgentTest do
   end
 
   test "notify_drone_entered adds neighbor to state", %{tracker_name: tracker, relay_name: relay} do
-    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay, 1)
+    {:ok, pid} = Simulator.PointAgent.start_link("static", "clean", tracker, relay, 1)
     fake_neighbor = self()
 
-    PointAgent.notify_drone_entered(pid, fake_neighbor, %{x: 100, y: 100})
+    Simulator.PointAgent.notify_drone_entered(pid, fake_neighbor, %{x: 100, y: 100})
     Process.sleep(10)
 
     state = :sys.get_state(pid)
@@ -62,12 +62,12 @@ defmodule Simulator.PointAgentTest do
     tracker_name: tracker,
     relay_name: relay
   } do
-    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay, 1)
+    {:ok, pid} = Simulator.PointAgent.start_link("static", "clean", tracker, relay, 1)
     fake_neighbor = self()
 
-    PointAgent.notify_drone_entered(pid, fake_neighbor, %{x: 100, y: 100})
+    Simulator.PointAgent.notify_drone_entered(pid, fake_neighbor, %{x: 100, y: 100})
     Process.sleep(10)
-    PointAgent.notify_drone_left(pid, fake_neighbor)
+    Simulator.PointAgent.notify_drone_left(pid, fake_neighbor)
     Process.sleep(10)
 
     state = :sys.get_state(pid)
@@ -75,12 +75,12 @@ defmodule Simulator.PointAgentTest do
   end
 
   test "receive_shared_data delegates to algorithm", %{tracker_name: tracker, relay_name: relay} do
-    {:ok, pid} = PointAgent.start_link("static", "clean", tracker, relay, 1)
+    {:ok, pid} = Simulator.PointAgent.start_link("static", "clean", tracker, relay, 1)
     fake_sender = self()
 
     # Static algorithm doesn't implement handle_received_data,
     # so the state should remain unchanged
-    PointAgent.receive_shared_data(pid, fake_sender, %{some: "data"})
+    Simulator.PointAgent.receive_shared_data(pid, fake_sender, %{some: "data"})
     Process.sleep(10)
 
     state = :sys.get_state(pid)

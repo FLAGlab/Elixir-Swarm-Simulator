@@ -1,4 +1,4 @@
-defmodule PointAgent do
+defmodule Simulator.PointAgent do
   @moduledoc """
   GenServer modeling an autonomous drone.
 
@@ -18,6 +18,7 @@ defmodule PointAgent do
   """
 
   use GenServer
+  require Logger
 
   alias Simulator.Algorithm
   alias Simulator.Algorithms
@@ -25,7 +26,7 @@ defmodule PointAgent do
   alias Simulator.Environment.PositionTracker
   alias Simulator.Environment.CommunicationRelay
 
-  @update_interval 30
+  @update_interval Application.compile_env(:simulator, :tick_interval, 30)
 
   # Public API -------------------------------------------------------
 
@@ -91,12 +92,13 @@ defmodule PointAgent do
 
   @impl true
   def init(config) do
-    map = Maps.get_map(config.map).get_paramethers()
+    algorithm = resolve_algorithm(config.algo)
+    map = resolve_map(config.map)
 
     state = %{
       id: config.id,
       position: map.spawn_point,
-      algorithm: Algorithms.get_algorithm(config.algo),
+      algorithm: algorithm,
       map: map,
       neighbors: %{},
       tracker: config.tracker,
@@ -176,6 +178,26 @@ defmodule PointAgent do
   defp extract_algorithm_state(state) do
     algo_state = Map.drop(state, @system_keys)
     Algorithm.format_state(state.algorithm, algo_state)
+  end
+
+  defp resolve_algorithm(name) do
+    algorithm = Algorithms.get_algorithm(name)
+
+    if is_binary(name) and algorithm == Simulator.Algorithms.RandomWalk and name != "random_walk" do
+      Logger.warning("PointAgent: unknown algorithm #{inspect(name)}, falling back to RandomWalk")
+    end
+
+    algorithm
+  end
+
+  defp resolve_map(name) do
+    map_module = Maps.get_map(name)
+
+    if map_module == Simulator.Maps.CleanMap and name != "clean" do
+      Logger.warning("PointAgent: unknown map #{inspect(name)}, falling back to CleanMap")
+    end
+
+    map_module.get_parameters()
   end
 
   defp schedule_tick do

@@ -8,7 +8,7 @@ defmodule Simulator.Maps.CityMap do
   alias Simulator.Maps.MapParams
 
   @impl true
-  def get_paramethers(_opts \\ %{}) do
+  def get_parameters(_opts \\ %{}) do
     %MapParams{width: 500, height: 500, structures: blocks(), spawn_point: %{x: 250, y: 250}}
   end
 

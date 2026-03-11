@@ -4,13 +4,13 @@ defmodule Simulator.SimulationManager do
 
   Maintains a map of `simulation.id => executor_pid` in its state. Prevents
   duplicate executions for the same simulation ID — if an execution is already
-  running, `{:start_excution, ...}` replies with `:already_running`.
+  running, `{:start_execution, ...}` replies with `:already_running`.
 
   Started as a named singleton (`__MODULE__`) in the application supervision tree.
   Accepts an optional `:interval` option (defaults to `@default_interval`).
   """
 
-  alias Simulator.SimulationExcutor
+  alias Simulator.SimulationExecutor
   use GenServer
   require Logger
 
@@ -27,11 +27,21 @@ defmodule Simulator.SimulationManager do
     interval = Keyword.get(opts, :interval, @default_interval)
 
     initial_state = %{
-      :interval => interval,
-      :executions => %{}
+      interval: interval,
+      executions: %{}
     }
 
     GenServer.start_link(__MODULE__, initial_state, name: __MODULE__)
+  end
+
+  @doc """
+  Stops the execution for the given simulation, freeing all resources.
+
+  Returns `:ok` if the execution was stopped, `:not_found` if no execution
+  was running for that simulation ID.
+  """
+  def stop_execution(simulation_id) do
+    GenServer.call(__MODULE__, {:stop_execution, simulation_id})
   end
 
   @impl true
@@ -40,22 +50,20 @@ defmodule Simulator.SimulationManager do
   end
 
   @impl true
-  def handle_call({:start_excution, %{:simulation => simulation}}, _from, state) do
-    algorithm = simulation.algorithm
-    Logger.info("SimulationManager: start execution #{DateTime.utc_now()} #{algorithm}")
+  def handle_call({:start_execution, %{simulation: simulation}}, _from, state) do
+    Logger.info("SimulationManager: start execution #{DateTime.utc_now()} #{simulation.algorithm}")
 
     case Map.fetch(state.executions, simulation.id) do
       {:ok, _pid} ->
+        Logger.info("SimulationManager: execution already running for #{simulation.type}")
         {:reply, :already_running, state}
-        Logger.info("executor not processed: already running")
 
       :error ->
-        Logger.info("SimulationManager: starting new excutor: #{simulation.type}")
-        # Start a new simulation executor
-        with {:ok, pid} <- SimulationExcutor.start_link(%{simulation: simulation}) do
+        Logger.info("SimulationManager: starting new executor: #{simulation.type}")
+
+        with {:ok, pid} <- SimulationExecutor.start_link(%{simulation: simulation}) do
           new_executions = Map.put(state.executions, simulation.id, pid)
-          new_state = %{state | executions: new_executions}
-          {:reply, :ok, new_state}
+          {:reply, :ok, %{state | executions: new_executions}}
         else
           {:error, reason} ->
             Logger.error("Failed to start simulation executor: #{reason}")
@@ -65,10 +73,24 @@ defmodule Simulator.SimulationManager do
   end
 
   @impl true
-  def handle_call({:get_positions, %{:simulation => simulation}}, _from, state) do
+  def handle_call({:stop_execution, simulation_id}, _from, state) do
+    case Map.fetch(state.executions, simulation_id) do
+      {:ok, pid} ->
+        SimulationExecutor.stop(pid)
+        new_executions = Map.delete(state.executions, simulation_id)
+        Logger.info("SimulationManager: stopped execution #{simulation_id}")
+        {:reply, :ok, %{state | executions: new_executions}}
+
+      :error ->
+        {:reply, :not_found, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:get_positions, %{simulation: simulation}}, _from, state) do
     case Map.fetch(state.executions, simulation.id) do
       {:ok, pid} ->
-        data = SimulationExcutor.get_positions(pid)
+        data = SimulationExecutor.get_positions(pid)
         {:reply, data, state}
 
       :error ->
@@ -85,7 +107,7 @@ defmodule Simulator.SimulationManager do
       ) do
     case Map.fetch(state.executions, simulation.id) do
       {:ok, pid} ->
-        result = SimulationExcutor.get_agent_detail(pid, agent_id)
+        result = SimulationExecutor.get_agent_detail(pid, agent_id)
         {:reply, result, state}
 
       :error ->
@@ -94,16 +116,18 @@ defmodule Simulator.SimulationManager do
   end
 
   @impl true
-  def handle_info(:print, state) do
-    Logger.info("SimulationManager: heartbeat at #{DateTime.utc_now()}")
-    # schedule(interval)
-    {:noreply, state}
+  def handle_info({:DOWN, _ref, :process, pid, _reason}, state) do
+    new_executions =
+      state.executions
+      |> Enum.reject(fn {_id, executor_pid} -> executor_pid == pid end)
+      |> Map.new()
+
+    {:noreply, %{state | executions: new_executions}}
   end
 
   @impl true
-  # handle direct notifications (no PubSub)
-  def handle_cast({:simulation_event, payload}, state) do
-    Logger.info("PeriodicPrinter received simulation_event: #{inspect(payload)}")
+  def handle_info(:print, state) do
+    Logger.info("SimulationManager: heartbeat at #{DateTime.utc_now()}")
     {:noreply, state}
   end
 end

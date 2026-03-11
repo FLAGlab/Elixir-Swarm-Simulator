@@ -9,7 +9,9 @@ import Config
 
 config :simulator,
   ecto_repos: [Simulator.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  tick_interval: 30,
+  detection_radius: 50
 
 # Configures the endpoint
 config :simulator, SimulatorWeb.Endpoint,

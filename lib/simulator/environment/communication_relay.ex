@@ -14,6 +14,8 @@ defmodule Simulator.Environment.CommunicationRelay do
   use GenServer
   require Logger
 
+  alias Simulator.Environment.ProximityDetector
+
   # Public API -------------------------------------------------------
 
   @doc """
@@ -57,7 +59,7 @@ defmodule Simulator.Environment.CommunicationRelay do
     neighbors = get_sender_neighbors(sender_pid, state.proximity)
 
     Enum.each(neighbors, fn neighbor_pid ->
-      PointAgent.receive_shared_data(neighbor_pid, sender_pid, data)
+      Simulator.PointAgent.receive_shared_data(neighbor_pid, sender_pid, data)
     end)
 
     {:noreply, state}
@@ -66,8 +68,6 @@ defmodule Simulator.Environment.CommunicationRelay do
   # Private ----------------------------------------------------------
 
   defp get_sender_neighbors(sender_pid, proximity) do
-    proximity_state = :sys.get_state(proximity)
-
-    Map.get(proximity_state.neighbors, sender_pid, MapSet.new())
+    ProximityDetector.get_neighbors(proximity, sender_pid)
   end
 end

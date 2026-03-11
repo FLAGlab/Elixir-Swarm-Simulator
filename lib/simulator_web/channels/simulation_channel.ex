@@ -17,7 +17,7 @@ defmodule SimulatorWeb.SimulationChannel do
 
   alias Simulator.Simulations
 
-  @tick_interval 30
+  @tick_interval Application.compile_env(:simulator, :tick_interval, 30)
 
   # Callbacks --------------------------------------------------------
 
@@ -26,7 +26,7 @@ defmodule SimulatorWeb.SimulationChannel do
     simulation = Simulations.get_simulation!(id)
 
     data = %{simulation: simulation}
-    result = GenServer.call(Simulator.SimulationManager, {:start_excution, data})
+    result = GenServer.call(Simulator.SimulationManager, {:start_execution, data})
     Logger.info("SimulationChannel: start execution response #{inspect(result)}")
 
     schedule_tick()

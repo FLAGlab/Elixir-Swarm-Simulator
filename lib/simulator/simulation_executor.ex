@@ -1,4 +1,4 @@
-defmodule Simulator.SimulationExcutor do
+defmodule Simulator.SimulationExecutor do
   @moduledoc """
   GenServer that orchestrates the simulation environment.
 
@@ -40,13 +40,20 @@ defmodule Simulator.SimulationExcutor do
   end
 
   @doc """
+  Stops the executor and all its child processes (agents, environment modules).
+  """
+  def stop(pid) do
+    GenServer.stop(pid, :normal)
+  end
+
+  @doc """
   Starts a new simulation executor for the given `simulation` struct.
 
   Expects a map `%{simulation: %Simulation{}}`. The GenServer is registered
   under `String.to_atom(simulation.type)`.
   """
   def start_link(%{simulation: simulation}) do
-    Logger.info("SimulationExcutor: start excution #{simulation.type}")
+    Logger.info("SimulationExecutor: start excution #{simulation.type}")
     initial_state = %{simulation: simulation}
     GenServer.start_link(__MODULE__, initial_state, name: String.to_atom(simulation.type))
   end
@@ -56,7 +63,7 @@ defmodule Simulator.SimulationExcutor do
   @impl true
   def init(state) do
     simulation = state.simulation
-    Logger.info("SimulationExcutor: init excution #{simulation.type}")
+    Logger.info("SimulationExecutor: init excution #{simulation.type}")
 
     tracker_name = env_name("tracker", simulation.type)
     proximity_name = env_name("proximity", simulation.type)
@@ -99,7 +106,7 @@ defmodule Simulator.SimulationExcutor do
   def handle_call({:get_agent_detail, agent_id}, _from, state) do
     case Map.fetch(state.agents, agent_id) do
       {:ok, agent_pid} ->
-        detail = PointAgent.get_detail(agent_pid)
+        detail = Simulator.PointAgent.get_detail(agent_pid)
         {:reply, {:ok, detail}, state}
 
       :error ->
@@ -117,11 +124,25 @@ defmodule Simulator.SimulationExcutor do
     {:noreply, state}
   end
 
+  @impl true
+  def terminate(_reason, state) do
+    Enum.each(Map.get(state, :agents, %{}), fn {_id, pid} ->
+      if Process.alive?(pid), do: GenServer.stop(pid, :normal)
+    end)
+
+    for key <- [:tracker, :proximity_detector, :relay] do
+      pid = Map.get(state, key)
+      if pid && Process.alive?(pid), do: GenServer.stop(pid, :normal)
+    end
+
+    :ok
+  end
+
   # Private ----------------------------------------------------------
 
   defp spawn_agents(%{swarm: count, algorithm: algorithm, map: map}, tracker, relay) do
     for id <- 1..count, into: %{} do
-      {:ok, pid} = PointAgent.start_link(algorithm, map, tracker, relay, id)
+      {:ok, pid} = Simulator.PointAgent.start_link(algorithm, map, tracker, relay, id)
       {id, pid}
     end
   end

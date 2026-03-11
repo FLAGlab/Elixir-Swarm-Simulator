@@ -15,8 +15,8 @@ defmodule Simulator.Environment.ProximityDetector do
 
   alias Simulator.Environment.PositionTracker
 
-  @default_detection_radius 50
-  @check_interval 30
+  @default_detection_radius Application.compile_env(:simulator, :detection_radius, 50)
+  @check_interval Application.compile_env(:simulator, :tick_interval, 30)
 
   # Public API -------------------------------------------------------
 
@@ -37,6 +37,16 @@ defmodule Simulator.Environment.ProximityDetector do
     }
 
     GenServer.start_link(__MODULE__, config, name: name)
+  end
+
+  @doc """
+  Returns the set of neighbor PIDs for the given agent.
+
+  Used by the CommunicationRelay to determine which drones should
+  receive a broadcast from the sender.
+  """
+  def get_neighbors(proximity, agent_pid) do
+    GenServer.call(proximity, {:get_neighbors, agent_pid})
   end
 
   # Callbacks --------------------------------------------------------
@@ -61,6 +71,12 @@ defmodule Simulator.Environment.ProximityDetector do
 
     schedule_check()
     {:noreply, %{state | neighbors: new_neighbors}}
+  end
+
+  @impl true
+  def handle_call({:get_neighbors, agent_pid}, _from, state) do
+    neighbors = Map.get(state.neighbors, agent_pid, MapSet.new())
+    {:reply, neighbors, state}
   end
 
   # Private ----------------------------------------------------------
@@ -99,11 +115,11 @@ defmodule Simulator.Environment.ProximityDetector do
 
       Enum.each(entered, fn neighbor_pid ->
         neighbor_pos = Map.get(positions, neighbor_pid)
-        PointAgent.notify_drone_entered(pid, neighbor_pid, neighbor_pos)
+        Simulator.PointAgent.notify_drone_entered(pid, neighbor_pid, neighbor_pos)
       end)
 
       Enum.each(left, fn neighbor_pid ->
-        PointAgent.notify_drone_left(pid, neighbor_pid)
+        Simulator.PointAgent.notify_drone_left(pid, neighbor_pid)
       end)
     end)
   end

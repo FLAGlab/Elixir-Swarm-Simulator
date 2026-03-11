@@ -8,7 +8,7 @@ defmodule Simulator.Maps.BigCleanMap do
   alias Simulator.Maps.MapParams
 
   @impl true
-  def get_paramethers(_opts \\ %{}) do
+  def get_parameters(_opts \\ %{}) do
     %MapParams{width: 1000, height: 500, structures: [], spawn_point: %{x: 500, y: 250}}
   end
 end

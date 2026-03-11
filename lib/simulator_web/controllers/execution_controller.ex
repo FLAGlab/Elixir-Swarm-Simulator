@@ -20,7 +20,7 @@ defmodule SimulatorWeb.ExecutionController do
   """
   def show(conn, %{"id" => id}) do
     simulation = Simulations.get_simulation!(id)
-    map_params = Maps.get_map(simulation.map).get_paramethers()
+    map_params = Maps.get_map(simulation.map).get_parameters()
 
     structures_json =
       map_params.structures
