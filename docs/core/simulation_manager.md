@@ -51,7 +51,13 @@ sequenceDiagram
 
     Note over Ch,Ex: ... operación normal ...
 
-    alt Detención manual
+    alt Objetivo encontrado
+        Ex->>Mg: cast({:execution_complete, sim_id, stats})
+        Mg->>Mg: Guarda ExecutionRun en DB
+        Mg->>Mg: Broadcast PubSub {:simulation_complete}
+        Mg->>Ex: stop(pid)
+        Mg->>Mg: Limpia executions map
+    else Detención manual
         Ch->>Mg: stop_execution(sim_id)
         Mg->>Ex: stop(pid)
         Mg->>Mg: Limpia executions map
@@ -77,7 +83,8 @@ sequenceDiagram
 | **Prevención de duplicados** | Retorna `:already_running` si la simulación ya está en ejecución |
 | **Inicio de ejecuciones** | `start_execution/1` crea un SimulationExecutor y lo monitorea |
 | **Detención de ejecuciones** | `stop_execution/1` termina el Executor y libera recursos |
-| **Delegación de queries** | Delega position queries, agent detail queries, y comandos al Executor apropiado |
+| **Completitud de ejecución** | `handle_cast({:execution_complete, ...})` guarda `ExecutionRun` en DB, broadcast via PubSub, y detiene el Executor |
+| **Delegación de queries** | Delega position queries, agent detail queries, toggle de conexión, y comandos al Executor apropiado |
 | **Monitoreo** | `handle_info({:DOWN, ...})` limpia ejecuciones cuando un Executor termina inesperadamente |
 
 ## API Pública
@@ -88,12 +95,19 @@ sequenceDiagram
 | `stop_execution(simulation_id)` | Detiene una ejecución activa |
 | `get_positions(simulation)` | Obtiene posiciones de todos los agentes de una simulación |
 | `get_agent_detail(simulation, agent_id)` | Obtiene el estado detallado de un agente |
+| `toggle_drone_connection(simulation, agent_id, connected)` | Desconecta/reconecta un dron del entorno |
 
 ## Lifecycle
 
 ```
 Channel.join ──► start_execution ──► crea Executor + Monitor
                                           │
+              execution_complete ◄─────────┘  (objetivo encontrado)
+                       │
+                       ├── Guarda ExecutionRun en DB
+                       ├── Broadcast PubSub {:simulation_complete}
+                       └── stop(executor) + limpia executions map
+
                         stop_execution ◄───┘  (manual)
                                o
                         {:DOWN, ...}  ◄───┘  (inesperado)
@@ -104,7 +118,7 @@ Channel.join ──► start_execution ──► crea Executor + Monitor
 ## Patrón de acceso
 
 ```
-SimulationChannel ──► SimulationManager ──► SimulationExecutor
+SimulationChannel ──► SimulationManager ──► SimulationExecutor  (positions, detail, toggle_connection)
 SimulationController ──► SimulationManager ──► SimulationExecutor
 ```
 

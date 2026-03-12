@@ -47,22 +47,52 @@ defmodule Simulator.Environment.CommunicationRelay do
     GenServer.cast(relay, {:broadcast, sender_pid, data})
   end
 
+  @doc """
+  Blocks an agent from sending or receiving broadcasts.
+  """
+  def block_agent(relay, agent_pid) do
+    GenServer.cast(relay, {:block_agent, agent_pid})
+  end
+
+  @doc """
+  Unblocks a previously blocked agent.
+  """
+  def unblock_agent(relay, agent_pid) do
+    GenServer.cast(relay, {:unblock_agent, agent_pid})
+  end
+
   # Callbacks --------------------------------------------------------
 
   @impl true
   def init(config) do
-    {:ok, config}
+    {:ok, Map.put(config, :blocked, MapSet.new())}
   end
 
   @impl true
   def handle_cast({:broadcast, sender_pid, data}, state) do
-    neighbors = get_sender_neighbors(sender_pid, state.proximity)
+    if MapSet.member?(state.blocked, sender_pid) do
+      {:noreply, state}
+    else
+      neighbors = get_sender_neighbors(sender_pid, state.proximity)
 
-    Enum.each(neighbors, fn neighbor_pid ->
-      Simulator.PointAgent.receive_shared_data(neighbor_pid, sender_pid, data)
-    end)
+      Enum.each(neighbors, fn neighbor_pid ->
+        unless MapSet.member?(state.blocked, neighbor_pid) do
+          Simulator.PointAgent.receive_shared_data(neighbor_pid, sender_pid, data)
+        end
+      end)
 
-    {:noreply, state}
+      {:noreply, state}
+    end
+  end
+
+  @impl true
+  def handle_cast({:block_agent, agent_pid}, state) do
+    {:noreply, %{state | blocked: MapSet.put(state.blocked, agent_pid)}}
+  end
+
+  @impl true
+  def handle_cast({:unblock_agent, agent_pid}, state) do
+    {:noreply, %{state | blocked: MapSet.delete(state.blocked, agent_pid)}}
   end
 
   # Private ----------------------------------------------------------

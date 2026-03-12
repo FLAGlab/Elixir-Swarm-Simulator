@@ -3,7 +3,7 @@ defmodule Simulator.Repo.Migrations.CreateSimulations do
 
   def change do
     create table(:simulations) do
-      add :type, :string
+      add :name, :string
       add :algorithm, :string
       add :swarm, :integer
 

@@ -13,7 +13,7 @@ defmodule Simulator.SimulationsFixtures do
       |> Enum.into(%{
         algorithm: "some algorithm",
         swarm: 42,
-        type: "some type"
+        name: "some name"
       })
       |> Simulator.Simulations.create_simulation()
 

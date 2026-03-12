@@ -7,6 +7,7 @@ defmodule Simulator.Simulations do
   alias Simulator.Repo
 
   alias Simulator.Simulations.Simulation
+  alias Simulator.Simulations.ExecutionRun
 
   @doc """
   Returns the list of simulations.
@@ -18,7 +19,13 @@ defmodule Simulator.Simulations do
 
   """
   def list_simulations do
-    Repo.all(Simulation)
+    from(s in Simulation,
+      left_join: r in assoc(s, :execution_runs),
+      group_by: s.id,
+      select_merge: %{execution_count: count(r.id)},
+      order_by: [desc: s.id]
+    )
+    |> Repo.all()
   end
 
   @doc """
@@ -101,4 +108,28 @@ defmodule Simulator.Simulations do
   def change_simulation(%Simulation{} = simulation, attrs \\ %{}) do
     Simulation.changeset(simulation, attrs)
   end
+
+  # Execution Runs ---------------------------------------------------
+
+  @doc """
+  Creates an execution run record.
+  """
+  def create_execution_run(attrs) do
+    %ExecutionRun{}
+    |> ExecutionRun.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Returns all execution runs for a given simulation ID.
+  """
+  def list_execution_runs(simulation_id) do
+    from(r in ExecutionRun, where: r.simulation_id == ^simulation_id, order_by: [desc: r.id])
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets a single execution run. Raises if not found.
+  """
+  def get_execution_run!(id), do: Repo.get!(ExecutionRun, id)
 end

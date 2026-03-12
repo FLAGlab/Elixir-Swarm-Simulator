@@ -65,9 +65,15 @@ defmodule Simulator.Environment.ProximityDetector do
 
   @impl true
   def handle_info(:check_proximity, state) do
-    positions = PositionTracker.get_positions_map(state.tracker)
-    new_neighbors = compute_neighbors(positions, state.detection_radius)
-    notify_changes(state.neighbors, new_neighbors, positions)
+    all_positions = PositionTracker.get_positions_map(state.tracker)
+
+    active_positions =
+      Map.reject(all_positions, fn {_pid, data} ->
+        Map.get(data, :disconnected, false)
+      end)
+
+    new_neighbors = compute_neighbors(active_positions, state.detection_radius)
+    notify_changes(state.neighbors, new_neighbors, active_positions)
 
     schedule_check()
     {:noreply, %{state | neighbors: new_neighbors}}

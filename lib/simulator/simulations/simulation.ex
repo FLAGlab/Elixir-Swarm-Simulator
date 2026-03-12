@@ -3,10 +3,14 @@ defmodule Simulator.Simulations.Simulation do
   import Ecto.Changeset
 
   schema "simulations" do
-    field :type, :string
+    field :name, :string
     field :algorithm, :string
     field :swarm, :integer
     field :map, :string, default: "clean"
+    field :objective, :string, default: "static"
+    field :execution_count, :integer, virtual: true, default: 0
+
+    has_many :execution_runs, Simulator.Simulations.ExecutionRun
 
     timestamps(type: :utc_datetime)
   end
@@ -14,7 +18,7 @@ defmodule Simulator.Simulations.Simulation do
   @doc false
   def changeset(simulation, attrs) do
     simulation
-    |> cast(attrs, [:type, :algorithm, :swarm, :map])
-    |> validate_required([:type, :algorithm, :swarm, :map])
+    |> cast(attrs, [:name, :algorithm, :swarm, :map, :objective])
+    |> validate_required([:name, :algorithm, :swarm, :map, :objective])
   end
 end

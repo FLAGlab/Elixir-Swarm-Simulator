@@ -1,5 +1,5 @@
 <.form :let={f} for={@changeset} action={@action} class="space-y-4">
-  <.input field={f[:type]} type="text" label="Type" />
+  <.input field={f[:name]} type="text" label="Name" />
   <.input field={f[:swarm]} type="number" label="Swarm size" />
   <.input
     field={f[:algorithm]}
@@ -12,6 +12,12 @@
     type="select"
     label="Map"
     options={@maps}
+  />
+  <.input
+    field={f[:objective]}
+    type="select"
+    label="Objective"
+    options={@objectives}
   />
 
   <footer class="flex items-center gap-3 pt-2">

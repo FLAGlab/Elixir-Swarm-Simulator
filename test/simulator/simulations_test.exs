@@ -8,7 +8,7 @@ defmodule Simulator.SimulationsTest do
 
     import Simulator.SimulationsFixtures
 
-    @invalid_attrs %{type: nil, algorithm: nil, swarm: nil}
+    @invalid_attrs %{name: nil, algorithm: nil, swarm: nil}
 
     test "list_simulations/0 returns all simulations" do
       simulation = simulation_fixture()
@@ -21,10 +21,10 @@ defmodule Simulator.SimulationsTest do
     end
 
     test "create_simulation/1 with valid data creates a simulation" do
-      valid_attrs = %{type: "some type", algorithm: "some algorithm", swarm: 42}
+      valid_attrs = %{name: "some name", algorithm: "some algorithm", swarm: 42}
 
       assert {:ok, %Simulation{} = simulation} = Simulations.create_simulation(valid_attrs)
-      assert simulation.type == "some type"
+      assert simulation.name == "some name"
       assert simulation.algorithm == "some algorithm"
       assert simulation.swarm == 42
     end
@@ -35,12 +35,12 @@ defmodule Simulator.SimulationsTest do
 
     test "update_simulation/2 with valid data updates the simulation" do
       simulation = simulation_fixture()
-      update_attrs = %{type: "some updated type", algorithm: "some updated algorithm", swarm: 43}
+      update_attrs = %{name: "some updated name", algorithm: "some updated algorithm", swarm: 43}
 
       assert {:ok, %Simulation{} = simulation} =
                Simulations.update_simulation(simulation, update_attrs)
 
-      assert simulation.type == "some updated type"
+      assert simulation.name == "some updated name"
       assert simulation.algorithm == "some updated algorithm"
       assert simulation.swarm == 43
     end

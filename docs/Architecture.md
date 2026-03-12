@@ -40,6 +40,7 @@ flowchart TD
         Tracker["PositionTracker\n(posiciones)"]
         Proximity["ProximityDetector\n(vecindad)"]
         Relay["CommunicationRelay\n(ruteo datos)"]
+        ObjServer["ObjectiveServer\n(objetivo, opcional)"]
         Agents["PointAgent × N\n(drones autónomos)"]
 
         Tracker --> Proximity
@@ -47,6 +48,8 @@ flowchart TD
         Relay --> Agents
         Agents -- "report_position" --> Tracker
         Agents -- "broadcast" --> Relay
+        ObjServer -- "lee posiciones" --> Tracker
+        ObjServer -- "objective_found" --> Executor
     end
 ```
 
@@ -68,7 +71,7 @@ block-beta
         Agent2["PointAgent + Algorithm (cerebro)"]
     end
     block:db["PERSISTENCIA"]
-        DB["Ecto + SQLite (solo config, no ejecución)"]
+        DB["Ecto + SQLite (config + resultados de ejecución)"]
     end
 
     web --> app --> sim --> agent
@@ -84,16 +87,17 @@ block-beta
 | Componente | Responsabilidad | Documentación |
 |------------|----------------|:-------------:|
 | [PointAgent](core/point_agent.md) | Dron autónomo — movimiento, comunicación, estado local | Detalle |
-| [SimulationExecutor](core/simulation_executor.md) | Simulador del entorno físico — spawning, environment modules | Detalle |
+| [SimulationExecutor](core/simulation_executor.md) | Simulador del entorno físico — spawning, environment modules, gestión de conexión de drones | Detalle |
 | [SimulationManager](core/simulation_manager.md) | Bridge aplicación ↔ executors — lifecycle, queries | Detalle |
-| [Environment Modules](core/environment.md) | Mundo físico — posiciones, proximidad, comunicación | Detalle |
+| [Environment Modules](core/environment.md) | Mundo físico — posiciones, proximidad, comunicación, objetivos | Detalle |
 
-### Algoritmos y Mapas
+### Algoritmos, Mapas y Objetivos
 
 | Componente | Documentación |
 |------------|:-------------:|
 | Sistema de Algoritmos | [algorithms/ALGORITHMS.md](algorithms/ALGORITHMS.md) |
 | Sistema de Mapas | [maps/MAPS.md](maps/MAPS.md) |
+| Sistema de Objetivos | [objectives/OBJECTIVES.md](objectives/OBJECTIVES.md) |
 
 ### Web Layer (`lib/simulator_web/`)
 
@@ -107,7 +111,7 @@ block-beta
 
 | Flujo | Documentación |
 |-------|:-------------:|
-| [Ejecución en tiempo real](data_flows.md) | 7 pasos: CRUD → WebSocket → tick loop → render |
+| [Ejecución en tiempo real](data_flows.md) | 9 pasos: CRUD → WebSocket → tick loop → render → detección de objetivo → stats |
 
 ## Decisiones de Diseño
 
@@ -130,13 +134,23 @@ block-beta
    (`get_shared_data`) y cómo procesar datos recibidos (`handle_received_data`). El entorno
    solo maneja el ruteo — nunca inspecciona ni modifica el contenido
 8. **Entorno como módulos separados**: La simulación del mundo físico se divide en
-   GenServers especializados (PositionTracker, ProximityDetector, CommunicationRelay),
-   cada uno manejando un aspecto, orquestados por el Executor
+   GenServers especializados (PositionTracker, ProximityDetector, CommunicationRelay,
+   ObjectiveServer), cada uno manejando un aspecto, orquestados por el Executor
 9. **GenServer por miembro del enjambre**: Cada agente es un GenServer independiente con
    su propio tick loop, habilitando concurrencia real via la VM de BEAM
-10. **Behaviours pluggables**: Algoritmos y mapas son intercambiables via contratos de
-    behaviour + registries con keys string
+10. **Behaviours pluggables**: Algoritmos, mapas y objetivos son intercambiables via
+    contratos de behaviour + registries con keys string
 11. **Channels sobre LiveView para ejecución**: La visualización real-time usa Phoenix
     Channels + vanilla JS Canvas para control fino del renderizado a 30fps
-12. **Ejecución efímera**: Las simulaciones se persisten en la DB, pero las ejecuciones
-    son procesos OTP en memoria — no se guarda estado de ejecución
+12. **Ejecución efímera, resultados persistidos**: Las simulaciones se persisten en la DB.
+    Las ejecuciones son procesos OTP en memoria. Al completarse (objetivo encontrado), se
+    guarda un `ExecutionRun` con estadísticas (duración, ticks, dron finder, posición)
+13. **Desconexión como bloqueo de comunicación**: La desconexión temporal de un dron se
+    implementa en el entorno (PositionTracker, ProximityDetector, CommunicationRelay),
+    no en el PointAgent. El dron sigue ejecutando su algoritmo con estado obsoleto —
+    nunca se entera de que fue desconectado, simulando una falla real de red
+14. **Objetivos como entidades del entorno**: Los objetivos son entidades con comportamiento
+    pluggable (static, aim_random_walk) gestionadas por el ObjectiveServer. Los drones no
+    conocen la ubicación del objetivo — lo descubren por proximidad (sensor simulado). Al
+    encontrarlo, el Executor notifica al Manager, que persiste las estadísticas y notifica
+    al frontend via PubSub

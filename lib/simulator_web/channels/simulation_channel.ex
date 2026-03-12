@@ -10,6 +10,9 @@ defmodule SimulatorWeb.SimulationChannel do
   Supports a "selected drone" concept: the client can send `"select_drone"`
   or `"deselect_drone"` events. When a drone is selected, each tick also
   pushes a `"drone_detail"` event with that agent's detailed state.
+
+  Subscribes to PubSub for `"simulation_complete"` events. When the objective
+  is found, pushes the result to the client and stops ticking.
   """
 
   use SimulatorWeb, :channel
@@ -25,6 +28,8 @@ defmodule SimulatorWeb.SimulationChannel do
   def join("simulation:" <> id, _params, socket) do
     simulation = Simulations.get_simulation!(id)
 
+    Phoenix.PubSub.subscribe(Simulator.PubSub, "simulation:#{simulation.id}")
+
     data = %{simulation: simulation}
     result = GenServer.call(Simulator.SimulationManager, {:start_execution, data})
     Logger.info("SimulationChannel: start execution response #{inspect(result)}")
@@ -35,6 +40,7 @@ defmodule SimulatorWeb.SimulationChannel do
       socket
       |> assign(:simulation, simulation)
       |> assign(:selected_drone, nil)
+      |> assign(:completed, false)
 
     {:ok, socket}
   end
@@ -50,13 +56,46 @@ defmodule SimulatorWeb.SimulationChannel do
   end
 
   @impl true
+  def handle_in("toggle_drone_connection", %{"id" => drone_id, "connected" => connected}, socket) do
+    simulation = socket.assigns.simulation
+    query = %{simulation: simulation, agent_id: drone_id, connected: connected}
+    GenServer.call(Simulator.SimulationManager, {:toggle_drone_connection, query})
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:simulation_complete, %{execution_run_id: run_id, stats: stats}}, socket) do
+    push(socket, "simulation_complete", %{
+      execution_run_id: run_id,
+      finder_drone_id: stats.finder_drone_id,
+      duration_ms: stats.duration_ms,
+      ticks: stats.ticks
+    })
+
+    {:noreply, assign(socket, :completed, true)}
+  end
+
+  @impl true
+  def handle_info(:tick, %{assigns: %{completed: true}} = socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_info(:tick, socket) do
     simulation = socket.assigns.simulation
     data = %{simulation: simulation}
 
     case GenServer.call(Simulator.SimulationManager, {:get_positions, data}) do
-      %{positions: positions} ->
-        push(socket, "positions", %{positions: positions})
+      %{positions: positions} = response ->
+        payload = %{positions: positions}
+
+        payload =
+          case Map.get(response, :objective) do
+            nil -> payload
+            objective -> Map.put(payload, :objective, objective)
+          end
+
+        push(socket, "positions", payload)
 
       _ ->
         :ok

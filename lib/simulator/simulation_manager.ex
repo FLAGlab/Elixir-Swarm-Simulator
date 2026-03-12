@@ -11,6 +11,7 @@ defmodule Simulator.SimulationManager do
   """
 
   alias Simulator.SimulationExecutor
+  alias Simulator.Simulations
   use GenServer
   require Logger
 
@@ -51,15 +52,17 @@ defmodule Simulator.SimulationManager do
 
   @impl true
   def handle_call({:start_execution, %{simulation: simulation}}, _from, state) do
-    Logger.info("SimulationManager: start execution #{DateTime.utc_now()} #{simulation.algorithm}")
+    Logger.info(
+      "SimulationManager: start execution #{DateTime.utc_now()} #{simulation.algorithm}"
+    )
 
     case Map.fetch(state.executions, simulation.id) do
       {:ok, _pid} ->
-        Logger.info("SimulationManager: execution already running for #{simulation.type}")
+        Logger.info("SimulationManager: execution already running for #{simulation.name}")
         {:reply, :already_running, state}
 
       :error ->
-        Logger.info("SimulationManager: starting new executor: #{simulation.type}")
+        Logger.info("SimulationManager: starting new executor: #{simulation.name}")
 
         with {:ok, pid} <- SimulationExecutor.start_link(%{simulation: simulation}) do
           new_executions = Map.put(state.executions, simulation.id, pid)
@@ -94,7 +97,7 @@ defmodule Simulator.SimulationManager do
         {:reply, data, state}
 
       :error ->
-        Logger.info("SimulationManager: no executor found for simulation: #{simulation.type}")
+        Logger.info("SimulationManager: no executor found for simulation: #{simulation.name}")
         {:reply, :not_found, state}
     end
   end
@@ -112,6 +115,52 @@ defmodule Simulator.SimulationManager do
 
       :error ->
         {:reply, :not_found, state}
+    end
+  end
+
+  @impl true
+  def handle_call(
+        {:toggle_drone_connection,
+         %{simulation: simulation, agent_id: agent_id, connected: connected}},
+        _from,
+        state
+      ) do
+    case Map.fetch(state.executions, simulation.id) do
+      {:ok, pid} ->
+        result = SimulationExecutor.toggle_drone_connection(pid, agent_id, connected)
+        {:reply, result, state}
+
+      :error ->
+        {:reply, :not_found, state}
+    end
+  end
+
+  @impl true
+  def handle_cast({:execution_complete, simulation_id, stats}, state) do
+    Logger.info("SimulationManager: execution complete for simulation #{simulation_id}")
+
+    case Simulations.create_execution_run(stats) do
+      {:ok, run} ->
+        Phoenix.PubSub.broadcast(
+          Simulator.PubSub,
+          "simulation:#{simulation_id}",
+          {:simulation_complete, %{execution_run_id: run.id, stats: stats}}
+        )
+
+      {:error, changeset} ->
+        Logger.error(
+          "SimulationManager: failed to save execution run: #{inspect(changeset.errors)}"
+        )
+    end
+
+    case Map.fetch(state.executions, simulation_id) do
+      {:ok, pid} ->
+        SimulationExecutor.stop(pid)
+        new_executions = Map.delete(state.executions, simulation_id)
+        {:noreply, %{state | executions: new_executions}}
+
+      :error ->
+        {:noreply, state}
     end
   end
 

@@ -3,9 +3,9 @@ defmodule SimulatorWeb.SimulationControllerTest do
 
   import Simulator.SimulationsFixtures
 
-  @create_attrs %{type: "some type", algorithm: "some algorithm", swarm: 42}
-  @update_attrs %{type: "some updated type", algorithm: "some updated algorithm", swarm: 43}
-  @invalid_attrs %{type: nil, algorithm: nil, swarm: nil}
+  @create_attrs %{name: "some name", algorithm: "some algorithm", swarm: 42}
+  @update_attrs %{name: "some updated name", algorithm: "some updated algorithm", swarm: 43}
+  @invalid_attrs %{name: nil, algorithm: nil, swarm: nil}
 
   describe "index" do
     test "lists all simulations", %{conn: conn} do
@@ -28,7 +28,7 @@ defmodule SimulatorWeb.SimulationControllerTest do
       assert redirected_to(conn) == ~p"/simulations"
 
       conn = get(conn, ~p"/simulations")
-      assert html_response(conn, 200) =~ "some type"
+      assert html_response(conn, 200) =~ "some name"
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
@@ -54,7 +54,7 @@ defmodule SimulatorWeb.SimulationControllerTest do
       assert redirected_to(conn) == ~p"/simulations/#{simulation}"
 
       conn = get(conn, ~p"/simulations/#{simulation}")
-      assert html_response(conn, 200) =~ "some updated type"
+      assert html_response(conn, 200) =~ "some updated name"
     end
 
     test "renders errors when data is invalid", %{conn: conn, simulation: simulation} do

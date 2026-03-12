@@ -22,6 +22,7 @@ defmodule SimulatorWeb.Router do
     resources "/simulations", SimulationController
 
     get "/execution/:id", ExecutionController, :show
+    get "/execution_runs/:id", ExecutionRunController, :show
   end
 
   # Other scopes may use custom stacks.

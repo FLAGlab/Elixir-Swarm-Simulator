@@ -39,3 +39,6 @@ npm-debug.log
 *.db
 *.db-*
 
+# Feature plans (local only)
+/features/
+

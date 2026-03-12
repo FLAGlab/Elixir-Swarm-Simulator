@@ -6,7 +6,7 @@
           <.icon name="hero-arrow-left-micro" class="size-4" />
         </.link>
         <div>
-          <h1 class="text-2xl font-bold tracking-tight">{@simulation.type}</h1>
+          <h1 class="text-2xl font-bold tracking-tight">{@simulation.name}</h1>
           <p class="mt-1 text-sm text-base-content/60">
             <span class="badge badge-primary badge-sm">{@simulation.algorithm}</span>
             <span class="badge badge-secondary badge-sm ml-1">{@simulation.map}</span>
@@ -34,11 +34,24 @@
     </div>
 
     <div class="flex justify-center mt-4">
-      <div
-        id="drone-grid"
-        class="grid grid-cols-4 gap-2"
-        style={"width: #{@map_params.width + 32}px"}
-      >
+      <div style={"width: #{@map_params.width + 32}px"}>
+        <div class="relative mb-2">
+          <input
+            id="drone-search"
+            type="text"
+            placeholder="Search drones..."
+            class="input input-sm input-bordered w-full pl-9 font-mono"
+          />
+          <.icon
+            name="hero-magnifying-glass-micro"
+            class="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+          />
+        </div>
+        <div
+          id="drone-grid"
+          class="grid grid-cols-4 gap-2"
+        >
+        </div>
       </div>
     </div>
 

@@ -12,13 +12,20 @@ defmodule SimulatorWeb.SimulationController do
       simulations: simulations,
       changeset: changeset,
       algorithms: get_algorithms(),
-      maps: get_maps()
+      maps: get_maps(),
+      objectives: get_objectives()
     )
   end
 
   def new(conn, _params) do
     changeset = Simulations.change_simulation(%Simulation{})
-    render(conn, :new, changeset: changeset, algorithms: get_algorithms(), maps: get_maps())
+
+    render(conn, :new,
+      changeset: changeset,
+      algorithms: get_algorithms(),
+      maps: get_maps(),
+      objectives: get_objectives()
+    )
   end
 
   @spec create(Plug.Conn.t(), map()) :: Plug.Conn.t()
@@ -36,14 +43,16 @@ defmodule SimulatorWeb.SimulationController do
           simulations: simulations,
           changeset: changeset,
           algorithms: get_algorithms(),
-          maps: get_maps()
+          maps: get_maps(),
+          objectives: get_objectives()
         )
     end
   end
 
   def show(conn, %{"id" => id}) do
     simulation = Simulations.get_simulation!(id)
-    render(conn, :show, simulation: simulation)
+    execution_runs = Simulations.list_execution_runs(simulation.id)
+    render(conn, :show, simulation: simulation, execution_runs: execution_runs)
   end
 
   def edit(conn, %{"id" => id}) do
@@ -54,7 +63,8 @@ defmodule SimulatorWeb.SimulationController do
       simulation: simulation,
       changeset: changeset,
       algorithms: get_algorithms(),
-      maps: get_maps()
+      maps: get_maps(),
+      objectives: get_objectives()
     )
   end
 
@@ -72,7 +82,8 @@ defmodule SimulatorWeb.SimulationController do
           simulation: simulation,
           changeset: changeset,
           algorithms: get_algorithms(),
-          maps: get_maps()
+          maps: get_maps(),
+          objectives: get_objectives()
         )
     end
   end
@@ -92,5 +103,9 @@ defmodule SimulatorWeb.SimulationController do
 
   defp get_maps do
     Simulator.Maps.get_available_maps_keys()
+  end
+
+  defp get_objectives do
+    Simulator.Objectives.get_available_objectives_keys()
   end
 end
