@@ -84,16 +84,20 @@ Visit [`http://localhost:4000`](http://localhost:4000) once the server is starte
 │   │   ├── simulations.ex            # Ecto CRUD context
 │   │   ├── simulations/
 │   │   │   └── simulation.ex         # Simulation schema (type, algorithm, swarm, map)
-│   │   ├── geometry.ex               # Geometric utilities (collision, distance, etc.)
 │   │   ├── algorithms/
 │   │   │   ├── algorithm.ex          # Algorithm behaviour
 │   │   │   ├── algorithms.ex         # Algorithm registry
-│   │   │   ├── knowledge_store.ex    # Shared knowledge utilities (decay, merge, anti-echo)
+│   │   │   ├── helpers/              # Cross-algorithm utilities
+│   │   │   │   ├── geometry.ex       # Geometric utilities (collision, distance, grids)
+│   │   │   │   └── knowledge_store.ex # Shared knowledge (decay, merge, anti-echo)
 │   │   │   └── impl/                 # Algorithm implementations
 │   │   │       ├── random_walk.ex    # Random walk with collision avoidance
 │   │   │       ├── static.ex         # No movement
 │   │   │       ├── aim_random_walk.ex # Target-directed walk
-│   │   │       └── heatmap_walk.ex   # Heat-grid exploration with shared knowledge
+│   │   │       ├── heatmap_walk.ex   # Heat-grid exploration with shared knowledge
+│   │   │       ├── ant_colony.ex     # Ant Colony Optimization with pheromone grid
+│   │   │       ├── particle_swarm.ex # Particle Swarm Optimization (PSO)
+│   │   │       └── grey_wolf.ex      # Grey Wolf Optimizer (GWO)
 │   │   ├── environment/              # Physical world simulation
 │   │   │   ├── position_tracker.ex   # Stores agent positions
 │   │   │   ├── proximity_detector.ex # Detects neighbor proximity
@@ -271,7 +275,11 @@ Configuration files are located in `config/`:
 
 ## Adding New Algorithms
 
-See [ALGORITHMS.md](ALGORITHMS.md) for a guide on implementing new movement algorithms.
+See [docs/algorithms/ALGORITHMS.md](docs/algorithms/ALGORITHMS.md) for a guide on implementing new movement algorithms.
+
+## Adding New Maps
+
+See [docs/maps/MAPS.md](docs/maps/MAPS.md) for a guide on implementing new simulation maps.
 
 ## Project Guidelines
 

@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **`docs/Architecture.md`** — Full system architecture, data flows, supervision tree, and design decisions
 - **`docs/ProgramingGuide.md`** — All coding conventions, patterns, and rules for Elixir, Phoenix, CSS/JS, and HEEx
-- **`docs/ALGORITHMS.md`** — How to implement and register new movement algorithms
-- **`docs/MAPS.md`** — How to implement and register new simulation maps
+- **`docs/algorithms/ALGORITHMS.md`** — How to implement and register new movement algorithms
+- **`docs/maps/MAPS.md`** — How to implement and register new simulation maps
 
 **Failing to consult these documents before making changes will lead to inconsistent code.** Always verify your approach aligns with the documented architecture and conventions.
 

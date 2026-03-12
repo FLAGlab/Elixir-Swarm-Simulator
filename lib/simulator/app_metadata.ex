@@ -3,8 +3,6 @@ defmodule Simulator.AppMetadata do
   Centralized application metadata.
   """
 
-  @app :simulator
-
   def version, do: "1.0.0"
   def name, do: "Elixir Swarm Simulator"
 
