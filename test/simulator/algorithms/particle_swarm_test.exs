@@ -134,7 +134,7 @@ defmodule Simulator.Algorithms.ParticleSwarmTest do
   end
 
   describe "format_state/1" do
-    test "removes internal keys" do
+    test "returns structured format with exploration mode when no objective" do
       algo_state = %{
         velocity: %{vx: 1.0, vy: 2.0},
         personal_best: %{x: 100, y: 100},
@@ -143,9 +143,26 @@ defmodule Simulator.Algorithms.ParticleSwarmTest do
 
       formatted = ParticleSwarm.format_state(algo_state)
 
-      refute Map.has_key?(formatted, :velocity)
-      refute Map.has_key?(formatted, :personal_best)
-      assert Map.has_key?(formatted, :objective_found)
+      assert %{detail_fields: fields, overlay: nil} = formatted
+      assert Enum.any?(fields, &(&1.label == "Mode" and &1.value == "Exploration"))
+      assert Enum.any?(fields, &(&1.label == "Objective Found" and &1.value == false))
+    end
+
+    test "returns structured format with convergence mode when objective found" do
+      objective = %{x: 50, y: 50}
+
+      algo_state = %{
+        velocity: %{vx: 1.0, vy: 2.0},
+        personal_best: %{x: 100, y: 100},
+        objective_found: objective
+      }
+
+      formatted = ParticleSwarm.format_state(algo_state)
+
+      assert %{detail_fields: fields, overlay: nil} = formatted
+      assert Enum.any?(fields, &(&1.label == "Mode" and &1.value == "Convergence"))
+      assert Enum.any?(fields, &(&1.label == "Objective Found" and &1.value == true))
+      assert Enum.any?(fields, &(&1.label == "Objective Position" and &1.value == objective))
     end
   end
 

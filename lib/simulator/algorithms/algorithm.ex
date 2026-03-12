@@ -52,9 +52,24 @@ defmodule Simulator.Algorithm do
   Prepares the algorithm-specific state for external consumption.
 
   Called when the agent needs to expose its algorithm state (e.g. for
-  the detail panel). The algorithm can merge internal structures, remove
-  implementation details, or reshape data as needed. By default returns
-  the state unchanged.
+  the detail panel). Must return a structured map with two keys:
+
+  - `:detail_fields` — a list of field maps, each with `:label`, `:value`,
+    and `:type` (one of `"text"`, `"position"`, `"badge"`, `"boolean"`).
+  - `:overlay` — either `nil` or a map with `:cells` (list of
+    `%{x, y, intensity}`) and `:color` (RGB string like `"239, 68, 68"`).
+
+  Example return:
+
+      %{
+        detail_fields: [
+          %{label: "Target", value: %{x: 120, y: 340}, type: "position"},
+          %{label: "Role", value: "alpha", type: "badge"}
+        ],
+        overlay: nil
+      }
+
+  When not implemented, the fallback returns `%{detail_fields: [], overlay: nil}`.
   """
   @callback format_state(state :: map()) :: map()
 
@@ -88,13 +103,13 @@ defmodule Simulator.Algorithm do
 
   @doc """
   Calls `format_state/1` on the algorithm module if implemented,
-  otherwise returns the state unchanged.
+  otherwise returns an empty structured response.
   """
   def format_state(algorithm, state) do
     if function_exported?(algorithm, :format_state, 1) do
       algorithm.format_state(state)
     else
-      state
+      %{detail_fields: [], overlay: nil}
     end
   end
 end

@@ -105,9 +105,25 @@ defmodule Simulator.Algorithms.ParticleSwarm do
 
   @impl true
   def format_state(algo_state) do
-    algo_state
-    |> Map.delete(:velocity)
-    |> Map.delete(:personal_best)
+    objective = Map.get(algo_state, :objective_found)
+
+    fields = [
+      %{
+        label: "Mode",
+        value: if(objective, do: "Convergence", else: "Exploration"),
+        type: "badge"
+      },
+      %{label: "Objective Found", value: not is_nil(objective), type: "boolean"}
+    ]
+
+    fields =
+      if objective do
+        fields ++ [%{label: "Objective Position", value: objective, type: "position"}]
+      else
+        fields
+      end
+
+    %{detail_fields: fields, overlay: nil}
   end
 
   # Private — Velocity updates ----------------------------------------

@@ -71,10 +71,22 @@ defmodule Simulator.Algorithms.AntColony do
   @impl true
   def format_state(algo_state) do
     grid = Map.get(algo_state, :pheromone_grid, %{})
+    cells = grid_to_overlay(grid)
 
-    algo_state
-    |> Map.put(:pheromone_overlay, grid_to_overlay(grid))
-    |> Map.delete(:pheromone_grid)
+    fields =
+      case Map.get(algo_state, :target) do
+        nil -> []
+        target -> [%{label: "Target", value: target, type: "position"}]
+      end
+
+    overlay =
+      if cells == [] do
+        nil
+      else
+        %{cells: cells, color: "59, 130, 246"}
+      end
+
+    %{detail_fields: fields, overlay: overlay}
   end
 
   # Private ----------------------------------------------------------

@@ -83,7 +83,7 @@ defmodule Simulator.Algorithms.HeatmapWalkTest do
   end
 
   describe "format_state/1" do
-    test "combines visited and received into single visited list" do
+    test "returns structured format with visited count and heatmap overlay" do
       algo_state = %{
         visited: [%{x: 1, y: 1}],
         received_visited: %{self() => [%{x: 2, y: 2}]},
@@ -92,8 +92,19 @@ defmodule Simulator.Algorithms.HeatmapWalkTest do
 
       formatted = HeatmapWalk.format_state(algo_state)
 
-      assert length(formatted.visited) == 2
-      refute Map.has_key?(formatted, :received_visited)
+      assert %{detail_fields: fields, overlay: overlay} = formatted
+      assert Enum.any?(fields, &(&1.label == "Visited Cells" and &1.value == 2))
+      assert Enum.any?(fields, &(&1.label == "Target" and &1.type == "position"))
+      assert overlay.color == "239, 68, 68"
+      assert is_list(overlay.cells)
+    end
+
+    test "returns nil overlay when no visited positions" do
+      algo_state = %{visited: [], received_visited: %{}, target: nil}
+
+      formatted = HeatmapWalk.format_state(algo_state)
+
+      assert %{detail_fields: [%{label: "Visited Cells", value: 0}], overlay: nil} = formatted
     end
   end
 end

@@ -107,16 +107,24 @@ defmodule Simulator.Algorithms.AntColonyTest do
   end
 
   describe "format_state/1" do
-    test "converts grid to overlay and removes pheromone_grid" do
+    test "returns structured format with overlay and target" do
       grid = %{{0, 0} => 2.0, {1, 1} => 1.0}
       algo_state = %{pheromone_grid: grid, target: %{x: 100, y: 100}}
 
       formatted = AntColony.format_state(algo_state)
 
-      assert Map.has_key?(formatted, :pheromone_overlay)
-      refute Map.has_key?(formatted, :pheromone_grid)
-      assert is_list(formatted.pheromone_overlay)
-      assert length(formatted.pheromone_overlay) == 2
+      assert %{detail_fields: fields, overlay: overlay} = formatted
+      assert Enum.any?(fields, &(&1.label == "Target" and &1.type == "position"))
+      assert overlay.color == "59, 130, 246"
+      assert length(overlay.cells) == 2
+    end
+
+    test "returns nil overlay when grid is empty" do
+      algo_state = %{pheromone_grid: %{}, target: nil}
+
+      formatted = AntColony.format_state(algo_state)
+
+      assert %{detail_fields: [], overlay: nil} = formatted
     end
   end
 end

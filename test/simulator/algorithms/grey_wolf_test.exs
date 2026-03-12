@@ -193,7 +193,7 @@ defmodule Simulator.Algorithms.GreyWolfTest do
   end
 
   describe "format_state/1" do
-    test "removes internal keys" do
+    test "returns structured format with role and objective status" do
       algo_state = %{
         known_leaders: %{alpha: %{x: 1, y: 1}},
         a_param: 1.5,
@@ -203,9 +203,32 @@ defmodule Simulator.Algorithms.GreyWolfTest do
 
       formatted = GreyWolf.format_state(algo_state)
 
-      refute Map.has_key?(formatted, :known_leaders)
-      refute Map.has_key?(formatted, :a_param)
-      assert formatted.role == :omega
+      assert %{detail_fields: fields, overlay: nil} = formatted
+
+      assert Enum.any?(
+               fields,
+               &(&1.label == "Role" and &1.value == "omega" and &1.type == "badge")
+             )
+
+      assert Enum.any?(fields, &(&1.label == "Objective Found" and &1.value == false))
+    end
+
+    test "includes objective position when found" do
+      objective = %{x: 200, y: 300}
+
+      algo_state = %{
+        known_leaders: %{},
+        role: :alpha,
+        objective_found: objective,
+        target: %{x: 50, y: 50}
+      }
+
+      formatted = GreyWolf.format_state(algo_state)
+
+      assert %{detail_fields: fields, overlay: nil} = formatted
+      assert Enum.any?(fields, &(&1.label == "Objective Found" and &1.value == true))
+      assert Enum.any?(fields, &(&1.label == "Objective Position" and &1.value == objective))
+      assert Enum.any?(fields, &(&1.label == "Target" and &1.type == "position"))
     end
   end
 end

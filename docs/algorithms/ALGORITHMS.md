@@ -43,13 +43,43 @@ Procesa datos recibidos de un dron vecino. Llamado por el agente cuando el
 
 ### `format_state(algo_state)` — opcional
 
-Prepara el estado del algoritmo para consumo externo (e.g., panel de detalle del dron).
-Permite combinar estructuras internas, eliminar detalles de implementación, o reformatear
-datos antes de exponerlos.
+Prepara el estado del algoritmo para consumo externo (panel de detalle del dron).
+Debe retornar un mapa estructurado con dos keys:
+
+- `:detail_fields` — lista de campos a mostrar, cada uno con `:label`, `:value`, y `:type`
+- `:overlay` — `nil` o mapa con `:cells` (lista de `%{x, y, intensity}`) y `:color` (string RGB)
+
+**Tipos de campo soportados:**
+
+| Tipo | Renderizado en frontend |
+|------|------------------------|
+| `"text"` | Valor como string plano |
+| `"position"` | `(x, y)` desde un mapa `%{x, y}` |
+| `"badge"` | Badge/tag estilizado |
+| `"boolean"` | "Yes" / "No" |
+
+**Ejemplo:**
+
+```elixir
+@impl true
+def format_state(algo_state) do
+  %{
+    detail_fields: [
+      %{label: "Target", value: %{x: 120, y: 340}, type: "position"},
+      %{label: "Role", value: "alpha", type: "badge"},
+      %{label: "Visited Cells", value: 142, type: "text"},
+      %{label: "Objective Found", value: true, type: "boolean"}
+    ],
+    overlay: %{
+      cells: [%{x: 0, y: 0, intensity: 0.5}],
+      color: "239, 68, 68"
+    }
+  }
+end
+```
 
 - `algo_state` — estado del algoritmo (sin keys del sistema como `:position`, `:neighbors`, etc.)
-- Retorna el estado transformado
-- Default: estado sin cambios
+- Default: `%{detail_fields: [], overlay: nil}` (panel muestra solo posición y vecinos)
 
 ## Reglas de Estado
 
@@ -227,7 +257,16 @@ def handle_received_data(_sender, %{type: :mi_tipo, knowledge: incoming}, state)
 end
 
 @impl true
-def format_state(algo_state), do: KnowledgeStore.format_for_export(algo_state)
+def format_state(algo_state) do
+  own = Map.get(algo_state, :visited, [])
+  received = Map.get(algo_state, :received_visited, %{})
+  all = KnowledgeStore.all_positions(own, received)
+
+  %{
+    detail_fields: [%{label: "Visited Cells", value: length(all), type: "text"}],
+    overlay: nil
+  }
+end
 ```
 
 ## Utilidades Disponibles

@@ -52,7 +52,18 @@ defmodule Simulator.Algorithms.HeatmapWalk do
 
   @impl true
   def format_state(algo_state) do
-    KnowledgeStore.format_for_export(algo_state)
+    own = Map.get(algo_state, :visited, [])
+    received = Map.get(algo_state, :received_visited, %{})
+    all = KnowledgeStore.all_positions(own, received)
+
+    fields =
+      [%{label: "Visited Cells", value: length(all), type: "text"}] ++
+        case Map.get(algo_state, :target) do
+          nil -> []
+          target -> [%{label: "Target", value: target, type: "position"}]
+        end
+
+    %{detail_fields: fields, overlay: build_heatmap_overlay(all)}
   end
 
   @impl true
@@ -114,6 +125,25 @@ defmodule Simulator.Algorithms.HeatmapWalk do
         candidate
       end
     end
+  end
+
+  defp build_heatmap_overlay(positions) when positions == [], do: nil
+
+  defp build_heatmap_overlay(positions) do
+    grid =
+      Enum.reduce(positions, %{}, fn pos, acc ->
+        cell = Geometry.position_to_cell(pos, @cell_size)
+        Map.update(acc, cell, 1, &(&1 + 1))
+      end)
+
+    max_count = grid |> Map.values() |> Enum.max()
+
+    cells =
+      Enum.map(grid, fn {{col, row}, count} ->
+        %{x: col * @cell_size, y: row * @cell_size, intensity: count / max_count}
+      end)
+
+    %{cells: cells, color: "239, 68, 68"}
   end
 
   defp build_heat_grid(map, visited) do

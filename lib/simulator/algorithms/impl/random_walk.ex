@@ -12,6 +12,9 @@ defmodule Simulator.Algorithms.RandomWalk do
     {candidate, state}
   end
 
+  @impl true
+  def format_state(_algo_state), do: %{detail_fields: [], overlay: nil}
+
   # Private ----------------------------------------------------------
 
   defp find_valid_move(position, _map, 0), do: position

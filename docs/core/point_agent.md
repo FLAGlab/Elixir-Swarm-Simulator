@@ -100,7 +100,7 @@ el dron ejecuta su ciclo en `handle_info(:tick)`:
 | Mensaje | Origen | Respuesta |
 |---------|--------|-----------|
 | `:get_position` | SimulationExecutor | `%{x, y}` |
-| `:get_detail` | SimulationExecutor | Estado completo formateado por `Algorithm.format_state/2` |
+| `:get_detail` | SimulationExecutor | Estado completo con `algorithm_state` estructurado (`%{detail_fields, overlay}`) por `Algorithm.format_state/2` |
 
 ## API Pública
 
@@ -135,3 +135,11 @@ El dron solo puede actuar sobre información que podría tener de forma realista
 
 **No puede** consultar posiciones de otros drones directamente, ni conocer ubicaciones
 de objetivos salvo que el entorno se lo comunique explícitamente.
+
+**Comportamiento ante desconexión:** Cuando el Executor desconecta un dron via
+`toggle_drone_connection`, el entorno bloquea sus comunicaciones (PositionTracker ignora
+sus `report_position`, CommunicationRelay ignora sus broadcasts, ProximityDetector lo
+excluye del cálculo de vecinos). El PointAgent **no recibe ninguna notificación** — sigue
+ejecutando su tick loop con estado obsoleto (vecinos antiguos, datos del algoritmo sin
+actualizar). Al reconectarse, el ProximityDetector eventualmente corrige enviando
+`drone_left`/`drone_entered` en los siguientes ciclos, simulando una reconexión real.

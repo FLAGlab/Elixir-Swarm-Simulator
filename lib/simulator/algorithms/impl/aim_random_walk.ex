@@ -28,6 +28,17 @@ defmodule Simulator.Algorithms.AimRandomWalk do
     end
   end
 
+  @impl true
+  def format_state(algo_state) do
+    fields =
+      case Map.get(algo_state, :target) do
+        nil -> []
+        target -> [%{label: "Target", value: target, type: "position"}]
+      end
+
+    %{detail_fields: fields, overlay: nil}
+  end
+
   # Private ----------------------------------------------------------
 
   defp move_toward_target(position, target, map, state) do

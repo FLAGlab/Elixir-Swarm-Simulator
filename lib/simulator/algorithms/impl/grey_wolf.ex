@@ -89,14 +89,28 @@ defmodule Simulator.Algorithms.GreyWolf do
 
   @impl true
   def format_state(algo_state) do
-    algo_state
-    |> Map.delete(:known_leaders)
-    |> Map.delete(:a_param)
+    role = Map.get(algo_state, :role)
+    objective = Map.get(algo_state, :objective_found)
+
+    fields =
+      [
+        if(role, do: %{label: "Role", value: Atom.to_string(role), type: "badge"}),
+        %{label: "Objective Found", value: not is_nil(objective), type: "boolean"},
+        if(objective, do: %{label: "Objective Position", value: objective, type: "position"}),
+        case Map.get(algo_state, :target) do
+          nil -> nil
+          target -> %{label: "Target", value: target, type: "position"}
+        end
+      ]
+      |> Enum.reject(&is_nil/1)
+
+    %{detail_fields: fields, overlay: nil}
   end
 
   # Private — Dispersed hunt -----------------------------------------
 
-  defp dispersed_step(position, map, role, known_leaders, state) when role in [:alpha, :beta, :delta] do
+  defp dispersed_step(position, map, role, known_leaders, state)
+       when role in [:alpha, :beta, :delta] do
     zone_center = zone_target(role, map)
     target = Map.get(state, :target) || zone_center
 
