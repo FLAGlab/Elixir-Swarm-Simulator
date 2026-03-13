@@ -17,10 +17,10 @@
           </p>
         </div>
 
-        <div :if={@simulations != []} class="flex flex-col gap-3">
+        <div :if={@simulations != []} class="flex flex-col gap-2">
           <div
             :for={simulation <- @simulations}
-            class="group relative rounded-box bg-base-200 p-5 transition hover:bg-base-300"
+            class="group relative rounded-box bg-base-200 px-4 py-3 transition hover:bg-base-300"
           >
             <.link
               navigate={~p"/simulations/#{simulation}"}
@@ -29,55 +29,44 @@
               <span class="sr-only">View</span>
             </.link>
             <div class="relative z-10 pointer-events-none">
-              <%!-- Header: name + id --%>
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="font-semibold text-lg">{simulation.name}</h3>
-                <span class="text-xs text-base-content/40 font-mono">#{simulation.id}</span>
-              </div>
-
-              <%!-- Config badges --%>
-              <div class="flex flex-wrap items-center gap-2 mb-3">
-                <span class="badge badge-primary badge-sm">{simulation.algorithm}</span>
-                <span class="badge badge-secondary badge-sm">{simulation.map}</span>
-                <span class={[
-                  "badge badge-sm",
-                  if(simulation.objective == "none", do: "badge-ghost", else: "badge-error")
-                ]}>
-                  {simulation.objective}
-                </span>
-              </div>
-
-              <%!-- Stats row --%>
-              <div class="flex items-center gap-4 text-sm text-base-content/60 mb-4">
-                <div class="flex items-center gap-1.5">
-                  <.icon name="hero-user-group-micro" class="size-4" />
-                  <span>{simulation.swarm} agents</span>
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <h3 class="font-semibold truncate">{simulation.name}</h3>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="badge badge-primary badge-xs">{simulation.algorithm}</span>
+                    <span class="badge badge-secondary badge-xs">{simulation.map}</span>
+                    <span class={[
+                      "badge badge-xs",
+                      if(simulation.objective == "none", do: "badge-ghost", else: "badge-error")
+                    ]}>
+                      {simulation.objective}
+                    </span>
+                  </div>
                 </div>
-                <div class="flex items-center gap-1.5">
-                  <.icon name="hero-clock-micro" class="size-4" />
-                  <span>{simulation.execution_count} runs</span>
+                <div class="flex items-center gap-3 shrink-0">
+                  <span class="text-xs text-base-content/50">
+                    {simulation.swarm} agents &middot; {simulation.execution_count} runs
+                  </span>
+                  <div class="flex items-center gap-1 pointer-events-auto">
+                    <.link navigate={~p"/execution/#{simulation}"} class="btn btn-primary btn-xs">
+                      <.icon name="hero-play-micro" class="size-3.5" />
+                    </.link>
+                    <.link
+                      navigate={~p"/simulations/#{simulation}/edit"}
+                      class="btn btn-ghost btn-xs"
+                    >
+                      <.icon name="hero-pencil-square-micro" class="size-3.5" />
+                    </.link>
+                    <.link
+                      href={~p"/simulations/#{simulation}"}
+                      method="delete"
+                      data-confirm="Are you sure you want to delete this simulation?"
+                      class="btn btn-ghost btn-xs text-error"
+                    >
+                      <.icon name="hero-trash-micro" class="size-3.5" />
+                    </.link>
+                  </div>
                 </div>
-              </div>
-
-              <%!-- Actions --%>
-              <div class="flex items-center gap-2 pointer-events-auto">
-                <.link navigate={~p"/execution/#{simulation}"} class="btn btn-primary btn-sm">
-                  <.icon name="hero-play-micro" class="size-4" /> Run
-                </.link>
-                <.link
-                  navigate={~p"/simulations/#{simulation}/edit"}
-                  class="btn btn-ghost btn-sm"
-                >
-                  <.icon name="hero-pencil-square-micro" class="size-4" /> Edit
-                </.link>
-                <.link
-                  href={~p"/simulations/#{simulation}"}
-                  method="delete"
-                  data-confirm="Are you sure you want to delete this simulation?"
-                  class="btn btn-ghost btn-sm text-error"
-                >
-                  <.icon name="hero-trash-micro" class="size-4" />
-                </.link>
               </div>
             </div>
           </div>

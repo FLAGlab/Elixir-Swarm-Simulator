@@ -6,13 +6,24 @@ defmodule Simulator.Maps do
   behaviour. When a name is not found, defaults to `CleanMap`.
   """
 
-  alias Simulator.Maps.{CleanMap, CityMap, BigCleanMap, SquareObstacleMap}
+  alias Simulator.Maps.{
+    CleanMap,
+    CityMap,
+    BigCleanMap,
+    SquareObstacleMap,
+    MazeCorridorsMap,
+    IndoorRoomsMap,
+    ScatteredIslandsMap
+  }
 
   @available_maps %{
     "clean" => CleanMap,
     "city" => CityMap,
     "big_clean" => BigCleanMap,
-    "square_obstacle" => SquareObstacleMap
+    "square_obstacle" => SquareObstacleMap,
+    "maze_corridors" => MazeCorridorsMap,
+    "indoor_rooms" => IndoorRoomsMap,
+    "scattered_islands" => ScatteredIslandsMap
   }
 
   @doc """
