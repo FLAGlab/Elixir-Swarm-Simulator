@@ -1,76 +1,76 @@
 # HeatmapWalk
 
-**Módulo:** `Simulator.Algorithms.HeatmapWalk`
-**Archivo:** `lib/simulator/algorithms/impl/heatmap_walk.ex`
-**Registro:** `"heatmap_walk"`
+**Module:** `Simulator.Algorithms.HeatmapWalk`
+**File:** `lib/simulator/algorithms/impl/heatmap_walk.ex`
+**Registry:** `"heatmap_walk"`
 
-## Descripción
+## Description
 
-Caminata dirigida por heatmap: similar a `AimRandomWalk` pero elige targets en las zonas
-menos visitadas del mapa. Divide el espacio en celdas y construye un mapa de calor con
-las posiciones visitadas. Al elegir un nuevo target, selecciona aleatoriamente entre las
-celdas con menor conteo de visitas ("celdas frías").
+Heatmap-guided walk: similar to `AimRandomWalk`, but it picks targets in the
+least-visited zones of the map. It divides the space into cells and builds a heatmap
+from visited positions. When choosing a new target, it randomly selects among the
+cells with the lowest visit count ("cold cells").
 
-Los drones comparten su conocimiento de posiciones visitadas con vecinos a través del
-`KnowledgeStore`, lo que permite exploración cooperativa: un dron evita zonas que otro
-ya exploró.
+Drones share their knowledge of visited positions with neighbors through the
+`KnowledgeStore`, which enables cooperative exploration: one drone avoids zones that
+another has already explored.
 
-## Constantes
+## Constants
 
-| Constante | Valor | Descripción |
+| Constant | Value | Description |
 |-----------|-------|-------------|
-| `@step_size` | 5 | Píxeles de avance por tick |
-| `@arrival_threshold` | 3 | Distancia mínima para considerar llegada |
-| `@history_size` | 200 | Tamaño máximo de la ventana de posiciones propias |
-| `@cell_size` | 20 | Tamaño de celda del grid en píxeles |
+| `@step_size` | 5 | Pixels advanced per tick |
+| `@arrival_threshold` | 3 | Minimum distance to consider arrival |
+| `@history_size` | 200 | Maximum size of the rolling window of own positions |
+| `@cell_size` | 20 | Grid cell size in pixels |
 
-## Comportamiento
+## Behavior
 
-### Movimiento
-1. **Decay:** En cada tick, aplica `KnowledgeStore.decay/1` al conocimiento recibido
-2. **Conocimiento total:** Combina posiciones propias + recibidas con `KnowledgeStore.all_positions/2`
-3. **Target:** Si no hay target o llegó al actual, construye grid de calor y elige target en celda fría
-4. **Movimiento:** Avanza hacia el target con `Geometry.step_toward/4`
-5. **Colisión:** Si el path colisiona, elige nuevo target frío y se queda
-6. **Registro:** En cada movimiento registra la posición en `:visited` (rolling window de `@history_size`)
+### Movement
+1. **Decay:** On each tick, applies `KnowledgeStore.decay/1` to received knowledge
+2. **Total knowledge:** Combines own + received positions with `KnowledgeStore.all_positions/2`
+3. **Target:** If there is no target, or it has reached the current one, builds the heat grid and picks a target in a cold cell
+4. **Movement:** Advances toward the target with `Geometry.step_toward/4`
+5. **Collision:** If the path collides, picks a new cold target and stays in place
+6. **Logging:** On every move, records the position into `:visited` (rolling window of `@history_size`)
 
-### Selección de target frío
-1. Construye grid base con `Geometry.build_cell_grid/2`
-2. Incrementa conteo por cada posición visitada (propia + recibida)
-3. Encuentra el valor mínimo de calor
-4. Selecciona aleatoriamente entre las celdas con ese valor mínimo
-5. Genera un punto random dentro de la celda elegida
-6. Si el punto cae en un obstáculo, usa `random_open_point` como fallback
+### Cold target selection
+1. Builds the base grid with `Geometry.build_cell_grid/2`
+2. Increments the count for each visited position (own + received)
+3. Finds the minimum heat value
+4. Randomly selects among the cells with that minimum value
+5. Generates a random point inside the chosen cell
+6. If the point falls inside an obstacle, falls back to `random_open_point`
 
-### Comunicación
-- **Broadcast:** Comparte conocimiento con `KnowledgeStore.build_shareable/2` — incluye
-  posiciones propias (keyed por self PID) + conocimiento recibido (transitivo)
-- **Recepción:** Merge con `KnowledgeStore.merge/2` — anti-eco automático, frescura por longitud
-- **Tipo de mensaje:** `%{type: :heatmap, knowledge: %{source_pid => [positions]}}`
+### Communication
+- **Broadcast:** Shares knowledge via `KnowledgeStore.build_shareable/2` — includes
+  own positions (keyed by self PID) + received knowledge (transitive)
+- **Reception:** Merges via `KnowledgeStore.merge/2` — automatic anti-echo, freshness by length
+- **Message type:** `%{type: :heatmap, knowledge: %{source_pid => [positions]}}`
 
-## Callbacks implementados
+## Implemented callbacks
 
-| Callback | Implementado |
-|----------|:------------:|
-| `compute_step/1` | Si |
-| `get_shared_data/1` | Si |
-| `handle_received_data/3` | Si |
-| `format_state/1` | Si |
+| Callback | Implemented |
+|----------|:-----------:|
+| `compute_step/1` | Yes |
+| `get_shared_data/1` | Yes |
+| `handle_received_data/3` | Yes |
+| `format_state/1` | Yes |
 
-## Estado interno
+## Internal state
 
-| Key | Tipo | Descripción |
+| Key | Type | Description |
 |-----|------|-------------|
-| `:target` | `%{x, y}` | Punto objetivo actual |
-| `:visited` | `[%{x, y}]` | Rolling window de posiciones propias (máx `@history_size`) |
-| `:received_visited` | `%{pid => [%{x, y}]}` | Conocimiento recibido, keyed por fuente original |
+| `:target` | `%{x, y}` | Current target point |
+| `:visited` | `[%{x, y}]` | Rolling window of own positions (max `@history_size`) |
+| `:received_visited` | `%{pid => [%{x, y}]}` | Received knowledge, keyed by original source |
 
 ## format_state
 
-Combina `:visited` + `:received_visited` en una sola lista `:visited` y elimina
-`:received_visited` usando `KnowledgeStore.format_for_export/1`.
+Merges `:visited` + `:received_visited` into a single `:visited` list and removes
+`:received_visited` using `KnowledgeStore.format_for_export/1`.
 
-## Dependencias
+## Dependencies
 
 - `Geometry` — step_toward, path_collides?, euclidean_distance, build_cell_grid, position_to_cell, cell_to_point, random_open_point, inside_structure?
 - `KnowledgeStore` — decay, merge, all_positions, build_shareable, format_for_export

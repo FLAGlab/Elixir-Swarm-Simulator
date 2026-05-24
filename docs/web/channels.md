@@ -1,52 +1,52 @@
 # Channels (WebSocket)
 
-## Conexión
+## Connection
 
 - **Endpoint:** `/socket` (UserSocket)
-- **Archivo socket:** `lib/simulator_web/channels/user_socket.ex`
+- **Socket file:** `lib/simulator_web/channels/user_socket.ex`
 
 ## SimulationChannel
 
-**Módulo:** `SimulatorWeb.SimulationChannel`
-**Archivo:** `lib/simulator_web/channels/simulation_channel.ex`
+**Module:** `SimulatorWeb.SimulationChannel`
+**File:** `lib/simulator_web/channels/simulation_channel.ex`
 **Topic:** `"simulation:<id>"`
 
 ### Join
 
-Al unirse al channel (`join/3`):
-1. Carga la simulación desde la DB
-2. Suscribe al topic PubSub `"simulation:<id>"` para recibir eventos de completitud
-3. Llama `SimulationManager.start_execution(simulation)` — si ya existe, retorna el Executor existente
-4. Programa el primer `:tick`
-5. Inicializa `completed: false` en assigns
-6. Retorna `:ok`
+When joining the channel (`join/3`):
+1. Loads the simulation from the DB
+2. Subscribes to the PubSub topic `"simulation:<id>"` to receive completion events
+3. Calls `SimulationManager.start_execution(simulation)` — if it already exists, returns the existing Executor
+4. Schedules the first `:tick`
+5. Initializes `completed: false` in assigns
+6. Returns `:ok`
 
 ### Tick Loop
 
-Cada `@tick_interval` ms (configurable via `Application.compile_env(:simulator, :tick_interval, 30)`):
+Every `@tick_interval` ms (configurable via `Application.compile_env(:simulator, :tick_interval, 30)`):
 
-1. `SimulationManager.get_positions(simulation)` → posiciones de todos los agentes
-2. `push(socket, "positions", %{positions: positions})` → envía al frontend
-3. Si hay un dron seleccionado, obtiene su detalle y hace push de `"drone_detail"`
-4. Programa el siguiente tick
+1. `SimulationManager.get_positions(simulation)` → positions of all agents
+2. `push(socket, "positions", %{positions: positions})` → sends to the frontend
+3. If a drone is selected, retrieves its detail and pushes `"drone_detail"`
+4. Schedules the next tick
 
-### Eventos Entrantes (frontend → backend)
+### Incoming Events (frontend → backend)
 
-| Evento | Payload | Efecto |
-|--------|---------|--------|
-| `"select_drone"` | `%{"id" => integer}` | Almacena el ID del dron seleccionado en `socket.assigns` |
-| `"deselect_drone"` | `%{}` | Limpia la selección |
-| `"toggle_drone_connection"` | `%{"id" => integer, "connected" => boolean}` | Desconecta/reconecta un dron via SimulationManager → Executor |
+| Event | Payload | Effect |
+|-------|---------|--------|
+| `"select_drone"` | `%{"id" => integer}` | Stores the selected drone ID in `socket.assigns` |
+| `"deselect_drone"` | `%{}` | Clears the selection |
+| `"toggle_drone_connection"` | `%{"id" => integer, "connected" => boolean}` | Disconnects/reconnects a drone via SimulationManager → Executor |
 
-### Eventos Salientes (backend → frontend)
+### Outgoing Events (backend → frontend)
 
-| Evento | Payload | Frecuencia |
-|--------|---------|------------|
-| `"positions"` | `%{positions: [%{x, y, color, id}], objective: %{x, y} \| nil}` | Cada tick |
-| `"drone_detail"` | `%{id, position, neighbors_count, algorithm_state, disconnected}` | Cada tick (si hay selección) |
-| `"simulation_complete"` | `%{execution_run_id, finder_drone_id, duration_ms, ticks}` | Una vez (al encontrar objetivo) |
+| Event | Payload | Frequency |
+|-------|---------|-----------|
+| `"positions"` | `%{positions: [%{x, y, color, id}], objective: %{x, y} \| nil}` | Every tick |
+| `"drone_detail"` | `%{id, position, neighbors_count, algorithm_state, disconnected}` | Every tick (if there is a selection) |
+| `"simulation_complete"` | `%{execution_run_id, finder_drone_id, duration_ms, ticks}` | Once (when the objective is found) |
 
-### Diagrama de flujo (secuencia)
+### Flow Diagram (sequence)
 
 ```mermaid
 sequenceDiagram
@@ -61,7 +61,7 @@ sequenceDiagram
     Ex-->>Mg: {:ok, pid}
     Mg-->>Ch: :ok
 
-    loop Cada ~30ms (:tick)
+    loop Every ~30ms (:tick)
         Ch->>Mg: get_positions(simulation)
         Mg->>Ex: get_positions()
         Ex-->>Mg: %{positions: [...]}
@@ -70,9 +70,9 @@ sequenceDiagram
     end
 
     JS->>Ch: "select_drone" %{id: 3}
-    Note over Ch: Guarda en socket.assigns
+    Note over Ch: Stores in socket.assigns
 
-    loop Tick con selección
+    loop Tick with selection
         Ch->>Mg: get_agent_detail(sim, 3)
         Mg->>Ex: get_agent_detail(3)
         Ex-->>Mg: detail
@@ -81,7 +81,7 @@ sequenceDiagram
     end
 
     JS->>Ch: "deselect_drone"
-    Note over Ch: Limpia assigns
+    Note over Ch: Clears assigns
 ```
 
 ### Toggle Drone Connection
@@ -102,10 +102,10 @@ sequenceDiagram
     Ex->>CR: block_agent(agent_pid)
     Ex-->>Mg: :ok
     Mg-->>Ch: :ok
-    Note over JS: Siguiente tick muestra dron como desconectado
+    Note over JS: Next tick shows the drone as disconnected
 ```
 
-### Evento simulation_complete (PubSub → Channel → Frontend)
+### simulation_complete event (PubSub → Channel → Frontend)
 
 ```mermaid
 sequenceDiagram
@@ -116,20 +116,22 @@ sequenceDiagram
     PS->>Ch: {:simulation_complete, %{execution_run_id, stats}}
     Ch->>JS: push "simulation_complete" %{execution_run_id, finder_drone_id, duration_ms, ticks}
     Ch->>Ch: assign(:completed, true)
-    Note over Ch: Los siguientes :tick son ignorados (completed=true)
-    Note over JS: Redirige a /execution_runs/:id tras 1.5s
+    Note over Ch: Subsequent :tick messages are ignored (completed=true)
+    Note over JS: Redirects to /execution_runs/:id after 1.5s
 ```
 
-### Notas
+### Notes
 
-- El concepto de "dron seleccionado" vive exclusivamente en la capa web
-  (`socket.assigns.selected_drone`). El backend expone un query genérico
-  `get_agent_detail` que no sabe sobre selección.
-- El channel no controla comportamiento de drones — solo observa y transmite.
-- `toggle_drone_connection` es la excepción: permite desconectar/reconectar un dron del
-  entorno. El estado de conexión (`disconnected`) se incluye en `drone_detail` y en las
-  posiciones (como flag en el PositionTracker), permitiendo al frontend mostrar el estado visual.
-- Cuando se recibe `simulation_complete`, el channel deja de hacer ticks (`completed: true`
-  en assigns). El frontend redirige automáticamente a la pantalla de estadísticas.
-- El campo `objective` en el payload de `"positions"` solo está presente cuando la simulación
-  tiene un objetivo activo. Contiene `%{x, y}` con la posición actual del objetivo.
+- The "selected drone" concept lives exclusively in the web layer
+  (`socket.assigns.selected_drone`). The backend exposes a generic
+  `get_agent_detail` query that knows nothing about selection.
+- The channel does not control drone behavior — it only observes and transmits.
+- `toggle_drone_connection` is the exception: it allows disconnecting/reconnecting a
+  drone from the environment. The connection state (`disconnected`) is included in
+  `drone_detail` and in the positions (as a flag in the PositionTracker), letting
+  the frontend display the visual state.
+- When `simulation_complete` is received, the channel stops ticking (`completed: true`
+  in assigns). The frontend automatically redirects to the stats screen.
+- The `objective` field in the `"positions"` payload is only present when the
+  simulation has an active objective. It contains `%{x, y}` with the objective's
+  current position.

@@ -1,9 +1,9 @@
-# Data Flows: Ejecución en Tiempo Real
+# Data Flows: Real-Time Execution
 
-Este documento describe el flujo completo de datos desde que el usuario crea una simulación
-hasta que ve los agentes moviéndose en el canvas.
+This document describes the full data flow from when the user creates a simulation
+until they see the agents moving on the canvas.
 
-## Diagrama General
+## General Diagram
 
 ```mermaid
 flowchart TD
@@ -13,27 +13,27 @@ flowchart TD
         Stats["Stats Page"]
     end
 
-    subgraph Web["Capa Web"]
+    subgraph Web["Web Layer"]
         SC["SimulationController"]
         EC["ExecutionController"]
         ERC["ExecutionRunController"]
         Ch["SimulationChannel"]
     end
 
-    subgraph App["Capa Aplicación"]
+    subgraph App["Application Layer"]
         Mg["SimulationManager"]
         PS["PubSub"]
     end
 
-    subgraph Sim["Capa Simulación"]
+    subgraph Sim["Simulation Layer"]
         Ex["SimulationExecutor"]
         PT["PositionTracker"]
         PD["ProximityDetector"]
         CR["CommunicationRelay"]
-        OS["ObjectiveServer\n(opcional)"]
+        OS["ObjectiveServer\n(optional)"]
     end
 
-    subgraph Agents["Capa Agente"]
+    subgraph Agents["Agent Layer"]
         A["PointAgent × N"]
     end
 
@@ -51,7 +51,7 @@ flowchart TD
     Ex --> PT & PD & CR & OS
     PT --> PD
     PD --> CR
-    OS -- "lee posiciones" --> PT
+    OS -- "reads positions" --> PT
     OS -- "objective_found" --> Ex
     Ex -- "execution_complete" --> Mg
     Mg -- "save ExecutionRun" --> DB
@@ -63,7 +63,7 @@ flowchart TD
     PD -- "entered / left" --> A
 ```
 
-## Paso 1: Creación de simulación (CRUD)
+## Step 1: Simulation creation (CRUD)
 
 ```mermaid
 sequenceDiagram
@@ -74,12 +74,12 @@ sequenceDiagram
     B->>SC: POST /simulations
     SC->>DB: Repo.insert(changeset)
     DB-->>SC: {:ok, simulation}
-    SC-->>B: Redirect a /simulations/:id
+    SC-->>B: Redirect to /simulations/:id
 ```
 
-El usuario crea un record de simulación con nombre, algoritmo, cantidad de agentes, mapa y objetivo.
+The user creates a simulation record with a name, algorithm, agent count, map, and objective.
 
-## Paso 2: Lanzamiento de ejecución
+## Step 2: Execution launch
 
 ```mermaid
 sequenceDiagram
@@ -93,10 +93,10 @@ sequenceDiagram
     DB-->>EC: simulation
     EC->>Maps: get_map(sim.map).get_parameters()
     Maps-->>EC: %MapParams{width, height, structures}
-    EC-->>B: HTML + Canvas (dimensionado según MapParams)
+    EC-->>B: HTML + Canvas (sized according to MapParams)
 ```
 
-## Paso 3: Conexión WebSocket
+## Step 3: WebSocket connection
 
 ```mermaid
 sequenceDiagram
@@ -119,7 +119,7 @@ sequenceDiagram
     Ex->>PT: start_link()
     Ex->>PD: start_link(tracker)
     Ex->>CR: start_link(proximity)
-    opt Objetivo != "none"
+    opt Objective != "none"
         Ex->>OS: ObjectiveServer.start_link(objective_module, map, tracker, self)
     end
     Ex->>Agents: start_link × N (algorithm, map, tracker, relay)
@@ -130,7 +130,7 @@ sequenceDiagram
     Ch-->>JS: :ok
 ```
 
-## Paso 4: Loop de posiciones en tiempo real (cada ~30ms)
+## Step 4: Real-time position loop (every ~30ms)
 
 ```mermaid
 sequenceDiagram
@@ -140,19 +140,19 @@ sequenceDiagram
     participant Ex as Executor
     participant PT as PositionTracker
 
-    loop Cada ~30ms
+    loop Every ~30ms
         Ch->>Ch: handle_info(:tick)
         Ch->>Mg: get_positions(simulation)
         Mg->>Ex: get_positions()
         Ex->>PT: get_positions()
         PT-->>Ex: %{positions: [%{x, y, color, id}...]}
-        opt Hay ObjectiveServer
-            Ex->>Ex: Agrega objective position al response
+        opt There is an ObjectiveServer
+            Ex->>Ex: Adds objective position to the response
         end
         Ex-->>Mg: %{positions: [...], objective: %{x, y}}
         Mg-->>Ch: positions
         Ch->>JS: push("positions", data)
-        opt Dron seleccionado
+        opt Drone selected
             Ch->>Mg: get_agent_detail(sim, id)
             Mg-->>Ch: detail
             Ch->>JS: push("drone_detail", detail)
@@ -161,7 +161,7 @@ sequenceDiagram
     end
 ```
 
-## Paso 4.5: Toggle de conexión de dron (on-demand)
+## Step 4.5: Drone connection toggle (on-demand)
 
 ```mermaid
 sequenceDiagram
@@ -176,43 +176,44 @@ sequenceDiagram
     Ch->>Mg: toggle_drone_connection(simulation, 3, false)
     Mg->>Ex: toggle_drone_connection(3, false)
 
-    par Bloqueo en entorno
+    par Environment block
         Ex->>PT: block_agent(agent_pid)
-        Note over PT: Ignora report_position del dron<br/>Marca posición con disconnected: true
+        Note over PT: Ignores the drone's report_position<br/>Marks position with disconnected: true
     and
         Ex->>CR: block_agent(agent_pid)
-        Note over CR: Ignora broadcasts del dron<br/>No entrega mensajes al dron
+        Note over CR: Ignores the drone's broadcasts<br/>Does not deliver messages to the drone
     end
 
     Ex-->>Mg: :ok
     Mg-->>Ch: :ok
 
-    Note over JS: ProximityDetector filtra al dron<br/>→ dispara drone_left a sus vecinos
-    Note over JS: Siguiente tick muestra dron gris con opacidad 0.4
+    Note over JS: ProximityDetector filters out the drone<br/>→ triggers drone_left for its neighbors
+    Note over JS: Next tick shows a gray drone with opacity 0.4
 ```
 
-El dron **sigue corriendo** su tick loop — llama `compute_step`, intenta `report_position`
-y `broadcast`, pero el entorno los ignora. Al reconectar (`connected: true`), el entorno
-reanuda el tracking y el dron conserva su estado sucio (vecinos obsoletos, datos antiguos).
+The drone **keeps running** its tick loop — it calls `compute_step`, attempts
+`report_position` and `broadcast`, but the environment ignores them. On reconnection
+(`connected: true`), the environment resumes tracking and the drone retains its
+dirty state (stale neighbors, old data).
 
-## Paso 5: Renderizado en Canvas (Browser)
+## Step 5: Canvas rendering (Browser)
 
 ```mermaid
 flowchart TD
-    Event["Recibe evento 'positions'"] --> Clear["Clear canvas"]
-    Clear --> Structures["Dibujar structures\n(polígonos grises)"]
-    Structures --> Overlay{"Hay dron\nseleccionado\ncon overlay?"}
-    Overlay -- "Si" --> DrawOverlay["Dibujar overlay\n(heatmap / feromonas)"]
+    Event["Receives 'positions' event"] --> Clear["Clear canvas"]
+    Clear --> Structures["Draw structures\n(gray polygons)"]
+    Structures --> Overlay{"Selected drone\nwith overlay?"}
+    Overlay -- "Yes" --> DrawOverlay["Draw overlay\n(heatmap / pheromones)"]
     Overlay -- "No" --> DrawObj
-    DrawOverlay --> DrawObj{"Hay objetivo?"}
-    DrawObj -- "Si" --> Objective["Dibujar objetivo\n(círculo rojo)"]
+    DrawOverlay --> DrawObj{"Is there an objective?"}
+    DrawObj -- "Yes" --> Objective["Draw objective\n(red circle)"]
     DrawObj -- "No" --> DrawAgents
-    Objective --> DrawAgents["Dibujar agentes\n(círculos concéntricos)"]
-    DrawAgents --> Colors["Colorear:\nvioleta = solo\nverde = con vecinos\námbar = seleccionado"]
-    Colors --> Grid["Actualizar drone grid\ny detail panel"]
+    Objective --> DrawAgents["Draw agents\n(concentric circles)"]
+    DrawAgents --> Colors["Color them:\nviolet = alone\ngreen = with neighbors\namber = selected"]
+    Colors --> Grid["Update drone grid\nand detail panel"]
 ```
 
-## Paso 6: Ciclo de tick del agente (cada ~30ms, independiente por agente)
+## Step 6: Agent tick cycle (every ~30ms, independent per agent)
 
 ```mermaid
 sequenceDiagram
@@ -221,7 +222,7 @@ sequenceDiagram
     participant PT as PositionTracker
     participant CR as CommunicationRelay
 
-    loop Cada ~30ms (independiente)
+    loop Every ~30ms (independent)
         PA->>Algo: compute_step(state)
         Algo-->>PA: {new_position, updated_state}
         PA->>PT: report_position(tracker, self, position)
@@ -236,12 +237,12 @@ sequenceDiagram
     end
 ```
 
-## Paso 7: Módulos de entorno (continuo, paralelo)
+## Step 7: Environment modules (continuous, parallel)
 
-> **Nota:** Tanto el ProximityDetector como el CommunicationRelay filtran agentes
-> desconectados (bloqueados) de sus operaciones. El ProximityDetector excluye posiciones
-> con `disconnected: true` antes de calcular vecinos, y el CommunicationRelay ignora
-> broadcasts de/hacia agentes bloqueados.
+> **Note:** Both the ProximityDetector and the CommunicationRelay filter out
+> disconnected (blocked) agents from their operations. The ProximityDetector
+> excludes positions with `disconnected: true` before computing neighbors, and
+> the CommunicationRelay ignores broadcasts to/from blocked agents.
 
 ```mermaid
 sequenceDiagram
@@ -251,17 +252,17 @@ sequenceDiagram
     participant A as Agent A
     participant B as Agent B
 
-    par ProximityDetector (cada ~30ms)
-        loop Cada ~30ms
+    par ProximityDetector (every ~30ms)
+        loop Every ~30ms
             PD->>PT: get_positions()
-            PT-->>PD: todas las posiciones
-            PD->>PD: Calcula distancias entre pares
-            PD->>PD: Diff con estado anterior
-            opt Nuevo par en rango
+            PT-->>PD: all positions
+            PD->>PD: Compute pairwise distances
+            PD->>PD: Diff against previous state
+            opt New pair in range
                 PD->>A: drone_entered(B, pos)
                 PD->>B: drone_entered(A, pos)
             end
-            opt Par sale de rango
+            opt Pair leaves range
                 PD->>A: drone_left(B)
                 PD->>B: drone_left(A)
             end
@@ -274,9 +275,9 @@ sequenceDiagram
     end
 ```
 
-## Paso 8: Detección de objetivo (ObjectiveServer, paralelo)
+## Step 8: Objective detection (ObjectiveServer, parallel)
 
-> Solo aplica cuando la simulación tiene un objetivo distinto de `"none"`.
+> Only applies when the simulation has an objective other than `"none"`.
 
 ```mermaid
 sequenceDiagram
@@ -288,14 +289,14 @@ sequenceDiagram
     participant DB as Repo
     participant PS as PubSub
 
-    loop Cada ~30ms (mientras no encontrado)
+    loop Every ~30ms (while not found)
         OS->>OS: objective_module.tick(position, state, map)
         OS->>PT: get_positions_map()
         PT-->>OS: %{pid => %{x, y, id, ...}}
-        OS->>OS: Filtrar desconectados + buscar dron en rango (25px)
+        OS->>OS: Filter disconnected + look for drone within range (25px)
     end
 
-    Note over OS: Dron encontrado dentro del radio de detección
+    Note over OS: Drone found within the detection radius
 
     OS->>Ex: send({:objective_found, drone_id, position})
     Ex->>Agents: receive_shared_data(:environment, %{type: :objective_found, position})
@@ -306,10 +307,10 @@ sequenceDiagram
     Mg->>Ex: stop(pid)
 ```
 
-Las estadísticas incluyen: `duration_ms`, `ticks`, `finder_drone_id`, `objective_position`,
+The stats include: `duration_ms`, `ticks`, `finder_drone_id`, `objective_position`,
 `algorithm`, `map`, `objective`, `swarm_size`, `status`.
 
-## Paso 9: Redirección a pantalla de estadísticas
+## Step 9: Redirect to stats screen
 
 ```mermaid
 sequenceDiagram
@@ -321,12 +322,12 @@ sequenceDiagram
 
     PS->>Ch: {:simulation_complete, %{execution_run_id, stats}}
     Ch->>JS: push "simulation_complete" %{execution_run_id, ...}
-    Note over JS: Espera 1.5s
+    Note over JS: Waits 1.5s
     JS->>ERC: GET /execution_runs/:id
     ERC->>DB: get_execution_run!(id)
     DB-->>ERC: %ExecutionRun{}
-    ERC-->>JS: HTML con estadísticas
+    ERC-->>JS: HTML with stats
 ```
 
-El frontend muestra: algoritmo, mapa, objetivo, duración, ticks, dron finder,
-posición del objetivo, y un botón para volver a ejecutar la simulación.
+The frontend displays: algorithm, map, objective, duration, ticks, finder drone,
+objective position, and a button to re-run the simulation.

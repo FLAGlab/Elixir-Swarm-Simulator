@@ -42,3 +42,15 @@ npm-debug.log
 # Feature plans (local only)
 /features/
 
+# Local documents (not tracked)
+/document/
+
+# Editor workspace settings (local only)
+/.vscode/
+
+# macOS Finder metadata
+.DS_Store
+
+# Claude Code local config (agents, session state)
+/.claude/
+

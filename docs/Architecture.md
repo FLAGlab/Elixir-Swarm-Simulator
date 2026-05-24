@@ -2,9 +2,9 @@
 
 ## Overview
 
-Simulador multi-agente de enjambres construido con Phoenix 1.8 / Elixir 1.15 / SQLite.
-Los agentes son procesos OTP independientes (`PointAgent`) con algoritmos de movimiento
-pluggables, visualizados en tiempo real via Phoenix Channels + Canvas.
+Multi-agent swarm simulator built with Phoenix 1.8 / Elixir 1.15 / SQLite.
+Agents are independent OTP processes (`PointAgent`) with pluggable movement
+algorithms, visualized in real time via Phoenix Channels + Canvas.
 
 ## Supervision Tree
 
@@ -19,7 +19,7 @@ Simulator.Supervisor (one_for_one)
   |-- Registry (Simulator.Registry)           # Process registry
 ```
 
-## Diagrama de Componentes
+## Component Diagram
 
 ```mermaid
 flowchart TD
@@ -31,126 +31,160 @@ flowchart TD
         Registry["Registry"]
     end
 
-    Endpoint --> Channel["SimulationChannel\n(por conexión WS)"]
+    Endpoint --> Channel["SimulationChannel\n(per WS connection)"]
     Channel -- "start / query" --> Manager
 
     Manager --> Executor
 
-    subgraph Executor["SimulationExecutor (uno por simulación)"]
-        Tracker["PositionTracker\n(posiciones)"]
-        Proximity["ProximityDetector\n(vecindad)"]
-        Relay["CommunicationRelay\n(ruteo datos)"]
-        ObjServer["ObjectiveServer\n(objetivo, opcional)"]
-        Agents["PointAgent × N\n(drones autónomos)"]
+    subgraph Executor["SimulationExecutor (one per simulation)"]
+        Tracker["PositionTracker\n(positions)"]
+        Proximity["ProximityDetector\n(neighborhood)"]
+        Relay["CommunicationRelay\n(data routing)"]
+        ObjServer["ObjectiveServer\n(objective, optional)"]
+        Agents["PointAgent × N\n(autonomous drones)"]
 
         Tracker --> Proximity
         Proximity --> Relay
         Relay --> Agents
         Agents -- "report_position" --> Tracker
         Agents -- "broadcast" --> Relay
-        ObjServer -- "lee posiciones" --> Tracker
+        ObjServer -- "reads positions" --> Tracker
         ObjServer -- "objective_found" --> Executor
     end
 ```
 
-## Diagrama de Capas
+## Layer Diagram
 
 ```mermaid
 block-beta
     columns 1
-    block:web["CAPA WEB (observador)"]
+    block:web["WEB LAYER (observer)"]
         Controllers Channels Frontend["Frontend (Canvas JS)"]
     end
-    block:app["CAPA APLICACIÓN (bridge)"]
+    block:app["APPLICATION LAYER (bridge)"]
         Manager2["SimulationManager"]
     end
-    block:sim["CAPA SIMULACIÓN (dominio)"]
+    block:sim["SIMULATION LAYER (domain)"]
         Executor2["SimulationExecutor"] Environment["Environment Modules"]
     end
-    block:agent["CAPA AGENTE (autónomo)"]
-        Agent2["PointAgent + Algorithm (cerebro)"]
+    block:agent["AGENT LAYER (autonomous)"]
+        Agent2["PointAgent + Algorithm (brain)"]
     end
-    block:db["PERSISTENCIA"]
-        DB["Ecto + SQLite (config + resultados de ejecución)"]
+    block:db["PERSISTENCE"]
+        DB["Ecto + SQLite (config + execution results)"]
     end
 
     web --> app --> sim --> agent
 ```
 
-> **Regla:** cada capa solo habla con la inmediata inferior.
-> Web → Manager → Executor → Agents (nunca Web → Agents directamente).
+> **Rule:** each layer talks only to the one immediately below it.
+> Web → Manager → Executor → Agents (never Web → Agents directly).
 
-## Componentes
+## Components
 
 ### Core Domain (`lib/simulator/`)
 
-| Componente | Responsabilidad | Documentación |
-|------------|----------------|:-------------:|
-| [PointAgent](core/point_agent.md) | Dron autónomo — movimiento, comunicación, estado local | Detalle |
-| [SimulationExecutor](core/simulation_executor.md) | Simulador del entorno físico — spawning, environment modules, gestión de conexión de drones | Detalle |
-| [SimulationManager](core/simulation_manager.md) | Bridge aplicación ↔ executors — lifecycle, queries | Detalle |
-| [Environment Modules](core/environment.md) | Mundo físico — posiciones, proximidad, comunicación, objetivos | Detalle |
+| Component | Responsibility | Documentation |
+|-----------|---------------|:-------------:|
+| [PointAgent](core/point_agent.md) | Autonomous drone — movement, communication, local state | Detail |
+| [SimulationExecutor](core/simulation_executor.md) | Physical-environment simulator — spawning, environment modules, drone connection management | Detail |
+| [SimulationManager](core/simulation_manager.md) | Application ↔ executor bridge — lifecycle, queries | Detail |
+| [Environment Modules](core/environment.md) | Physical world — positions, proximity, communication, objectives | Detail |
 
-### Algoritmos, Mapas y Objetivos
+### Algorithms, Maps, and Objectives
 
-| Componente | Documentación |
-|------------|:-------------:|
-| Sistema de Algoritmos | [algorithms/ALGORITHMS.md](algorithms/ALGORITHMS.md) |
-| Sistema de Mapas | [maps/MAPS.md](maps/MAPS.md) |
-| Sistema de Objetivos | [objectives/OBJECTIVES.md](objectives/OBJECTIVES.md) |
+| Component | Documentation |
+|-----------|:-------------:|
+| Algorithm System | [algorithms/ALGORITHMS.md](algorithms/ALGORITHMS.md) |
+| Map System | [maps/MAPS.md](maps/MAPS.md) |
+| Objective System | [objectives/OBJECTIVES.md](objectives/OBJECTIVES.md) |
 
 ### Web Layer (`lib/simulator_web/`)
 
-| Componente | Documentación |
-|------------|:-------------:|
-| [Rutas y Controllers](web/routes_and_controllers.md) | HTTP routes, CRUD, DB schema |
-| [Channels](web/channels.md) | WebSocket, eventos real-time |
+| Component | Documentation |
+|-----------|:-------------:|
+| [Routes and Controllers](web/routes_and_controllers.md) | HTTP routes, CRUD, DB schema |
+| [Channels](web/channels.md) | WebSocket, real-time events |
 | [Frontend](web/frontend.md) | Canvas, drone grid, detail panel |
 
 ### Data Flows
 
-| Flujo | Documentación |
-|-------|:-------------:|
-| [Ejecución en tiempo real](data_flows.md) | 9 pasos: CRUD → WebSocket → tick loop → render → detección de objetivo → stats |
+| Flow | Documentation |
+|------|:-------------:|
+| [Real-time execution](data_flows.md) | 9 steps: CRUD → WebSocket → tick loop → render → objective detection → stats |
 
-## Decisiones de Diseño
+## Design Decisions
 
-1. **Autonomía del dron**: Cada PointAgent opera solo con información local, reflejando las
-   restricciones de un dron real. Ningún agente accede a estado global — solo su posición,
-   su mapa, y mensajes recibidos del entorno
-2. **Algoritmos como cerebro del dron**: La inteligencia de movimiento está completamente
-   encapsulada en el algoritmo. El dron es tan inteligente como su algoritmo, y los
-   algoritmos solo usan información disponible localmente
-3. **Executor como entorno, no controlador**: El Executor simula el mundo físico
-   (comunicaciones, sensores, colisiones, objetivos) — nunca toma decisiones por los drones
-4. **Manager como bridge de aplicación**: Toda comunicación externa (web, channels) pasa
-   por el Manager. Ningún componente fuera de la simulación habla directamente con Executors
-5. **Frontend como observador**: La capa web visualiza la simulación y solo puede enviar
-   comandos de alto nivel (e.g., apagar N drones). No puede manipular agentes individuales
-6. **Mapas estáticos, objetivos desconocidos**: Los drones conocen el terreno (mapa +
-   obstáculos) pero no la ubicación de objetivos. El Executor revela objetivos a través
-   de detección por sensores simulados
-7. **Comunicación definida por algoritmo**: Los algoritmos deciden qué compartir
-   (`get_shared_data`) y cómo procesar datos recibidos (`handle_received_data`). El entorno
-   solo maneja el ruteo — nunca inspecciona ni modifica el contenido
-8. **Entorno como módulos separados**: La simulación del mundo físico se divide en
-   GenServers especializados (PositionTracker, ProximityDetector, CommunicationRelay,
-   ObjectiveServer), cada uno manejando un aspecto, orquestados por el Executor
-9. **GenServer por miembro del enjambre**: Cada agente es un GenServer independiente con
-   su propio tick loop, habilitando concurrencia real via la VM de BEAM
-10. **Behaviours pluggables**: Algoritmos, mapas y objetivos son intercambiables via
-    contratos de behaviour + registries con keys string
-11. **Channels sobre LiveView para ejecución**: La visualización real-time usa Phoenix
-    Channels + vanilla JS Canvas para control fino del renderizado a 30fps
-12. **Ejecución efímera, resultados persistidos**: Las simulaciones se persisten en la DB.
-    Las ejecuciones son procesos OTP en memoria. Al completarse (objetivo encontrado), se
-    guarda un `ExecutionRun` con estadísticas (duración, ticks, dron finder, posición)
-13. **Desconexión como bloqueo de comunicación**: La desconexión temporal de un dron se
-    implementa en el entorno (PositionTracker, ProximityDetector, CommunicationRelay),
-    no en el PointAgent. El dron sigue ejecutando su algoritmo con estado obsoleto —
-    nunca se entera de que fue desconectado, simulando una falla real de red
-14. **Objetivos como entidades del entorno**: Los objetivos son entidades con comportamiento
-    pluggable (static, aim_random_walk) gestionadas por el ObjectiveServer. Los drones no
-    conocen la ubicación del objetivo — lo descubren por proximidad (sensor simulado). Al
-    encontrarlo, el Executor notifica al Manager, que persiste las estadísticas y notifica
-    al frontend via PubSub
+1. **Drone autonomy:** Each PointAgent operates only on local information, reflecting
+   the constraints of a real drone. No agent accesses global state — only its
+   position, its map, and messages received from the environment.
+2. **Algorithms as the drone's brain:** Movement intelligence is fully encapsulated
+   in the algorithm. The drone is only as smart as its algorithm, and algorithms
+   only use locally available information.
+3. **Executor as environment, not controller:** The Executor simulates the physical
+   world (communications, sensors, collisions, objectives) — it never makes decisions
+   on behalf of the drones.
+4. **Manager as application bridge:** All external communication (web, channels)
+   goes through the Manager. No component outside the simulation talks to Executors
+   directly.
+5. **Frontend as observer:** The web layer visualizes the simulation and can only
+   send high-level commands (e.g., shut down N drones). It cannot manipulate
+   individual agents.
+6. **Static maps, unknown objectives:** Drones know the terrain (map + obstacles)
+   but not the objective's location. The Executor reveals objectives via simulated
+   sensor detection.
+7. **Communication defined by the algorithm:** Algorithms decide what to share
+   (`get_shared_data`) and how to process received data (`handle_received_data`).
+   The environment only handles routing — it never inspects or modifies content.
+8. **Environment as separate modules:** Physical-world simulation is split into
+   specialized GenServers (PositionTracker, ProximityDetector, CommunicationRelay,
+   ObjectiveServer), each handling one aspect, orchestrated by the Executor.
+9. **GenServer per swarm member:** Each agent is an independent GenServer with its
+   own tick loop, enabling true concurrency via the BEAM VM.
+10. **Pluggable behaviours:** Algorithms, maps, and objectives are swappable via
+    behaviour contracts + registries with string keys.
+11. **Channels over LiveView for execution:** Real-time visualization uses Phoenix
+    Channels + vanilla JS Canvas for fine-grained 30fps render control.
+12. **Ephemeral execution, persisted results:** Simulations are persisted in the DB.
+    Executions are in-memory OTP processes. On completion (objective found), an
+    `ExecutionRun` is saved with stats (duration, ticks, finder drone, position).
+13. **Disconnection as communication block:** Temporary drone disconnection is
+    implemented in the environment (PositionTracker, ProximityDetector,
+    CommunicationRelay), not in the PointAgent. The drone keeps running its
+    algorithm with stale state — it never finds out it was disconnected, simulating
+    a real network failure.
+14. **Objectives as environment entities:** Objectives are entities with pluggable
+    behavior (static, aim_random_walk) managed by the ObjectiveServer. Drones do
+    not know the objective's location — they discover it by proximity (simulated
+    sensor). When found, the Executor notifies the Manager, which persists the
+    stats and notifies the frontend via PubSub.
+15. **Partial reproducibility through dual seeding:** The simulation exposes
+    two independent seeds — `swarm_seed`, which seeds each agent's `:rand`
+    state via `:rand.seed(:exsss, {swarm_seed, agent_id, 0})` (the per-agent
+    offset keeps every drone on its own stream), and `objective_seed`, which
+    seeds the `ObjectiveServer` via `:rand.seed(:exsss, objective_seed)`.
+    Splitting the two lets a researcher vary swarm behavior while holding
+    the objective's trajectory fixed, or vice versa. Both seeds are resolved
+    in `SimulationExecutor.init/1` — taken from `Simulation.objective_seed`
+    / `Simulation.swarm_seed` when set, or filled independently with
+    `:erlang.system_time(:nanosecond)` — and persisted on the `ExecutionRun`
+    so any past run can be replayed.
+    To make `(swarm_seed, agent_id)` reproducible even for algorithms that
+    react to neighbor messages, every `PointAgent` buffers incoming
+    `:received_data` casts in its state and drains them at tick boundary —
+    sorted by sender — right before calling `compute_step`. Algorithms see
+    the same input sequence across runs regardless of the order in which
+    the BEAM scheduler delivered the underlying casts. The Algorithm
+    behaviour is untouched; the buffering lives entirely inside `PointAgent`.
+    Conceptually it mirrors real drones reading their inbox once per
+    control cycle instead of reacting to every incoming radio packet.
+
+    This makes **per-agent algorithm decisions** deterministic given identical
+    local state. It does **not** make the simulation as a whole bit-identical
+    across runs: the BEAM does not guarantee deterministic process scheduling,
+    so two agents' ticks still interleave nondeterministically, and a
+    broadcast that lands right around a tick boundary may end up in this
+    tick's buffer or the next one across runs. Reproducibility of
+    *algorithm decisions given identical inputs* is what the seeds plus the
+    tick-boundary buffer guarantee — sufficient for thesis-level claims about
+    algorithm behavior, insufficient for bit-perfect trajectory replay.

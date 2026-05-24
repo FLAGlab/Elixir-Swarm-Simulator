@@ -38,8 +38,15 @@ defmodule Simulator.Maps.IndoorRoomsMap do
 
     x_starts = [40, 260, 480, 700, 920]
 
-    top_walls = x_starts |> Enum.with_index(1) |> Enum.flat_map(&room_walls(&1, room_w, door_w, top_y1, top_y2, :bottom))
-    bot_walls = x_starts |> Enum.with_index(1) |> Enum.flat_map(&room_walls(&1, room_w, door_w, bot_y1, bot_y2, :top))
+    top_walls =
+      x_starts
+      |> Enum.with_index(1)
+      |> Enum.flat_map(&room_walls(&1, room_w, door_w, top_y1, top_y2, :bottom))
+
+    bot_walls =
+      x_starts
+      |> Enum.with_index(1)
+      |> Enum.flat_map(&room_walls(&1, room_w, door_w, bot_y1, bot_y2, :top))
 
     # Hallway end caps (left and right walls of hallway)
     hallway_walls = [
@@ -73,9 +80,15 @@ defmodule Simulator.Maps.IndoorRoomsMap do
             ],
             [
               # Bottom wall left of door
-              %{id: base_id + 3, points: [{x, y2 - 10}, {door_left, y2 - 10}, {door_left, y2}, {x, y2}]},
+              %{
+                id: base_id + 3,
+                points: [{x, y2 - 10}, {door_left, y2 - 10}, {door_left, y2}, {x, y2}]
+              },
               # Bottom wall right of door
-              %{id: base_id + 4, points: [{door_right, y2 - 10}, {x2, y2 - 10}, {x2, y2}, {door_right, y2}]}
+              %{
+                id: base_id + 4,
+                points: [{door_right, y2 - 10}, {x2, y2 - 10}, {x2, y2}, {door_right, y2}]
+              }
             ]
           }
 
@@ -91,9 +104,15 @@ defmodule Simulator.Maps.IndoorRoomsMap do
             ],
             [
               # Top wall left of door
-              %{id: base_id + 3, points: [{x, y1}, {door_left, y1}, {door_left, y1 + 10}, {x, y1 + 10}]},
+              %{
+                id: base_id + 3,
+                points: [{x, y1}, {door_left, y1}, {door_left, y1 + 10}, {x, y1 + 10}]
+              },
               # Top wall right of door
-              %{id: base_id + 4, points: [{door_right, y1}, {x2, y1}, {x2, y1 + 10}, {door_right, y1 + 10}]}
+              %{
+                id: base_id + 4,
+                points: [{door_right, y1}, {x2, y1}, {x2, y1 + 10}, {door_right, y1 + 10}]
+              }
             ]
           }
       end

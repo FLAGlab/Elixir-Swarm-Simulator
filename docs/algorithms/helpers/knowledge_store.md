@@ -1,28 +1,28 @@
 # KnowledgeStore
 
-**Módulo:** `Simulator.Algorithms.Helpers.KnowledgeStore`
-**Archivo:** `lib/simulator/algorithms/helpers/knowledge_store.ex`
+**Module:** `Simulator.Algorithms.Helpers.KnowledgeStore`
+**File:** `lib/simulator/algorithms/helpers/knowledge_store.ex`
 
-Utilidades para gestionar conocimiento compartido entre drones. Encapsula la lógica de
-almacenamiento, decay, merge y exportación de posiciones recibidas de otros drones,
-para que los algoritmos solo se ocupen de su estrategia de movimiento.
+Utilities for managing shared knowledge between drones. It encapsulates the logic
+for storing, decaying, merging, and exporting positions received from other drones,
+so algorithms can focus only on their movement strategy.
 
-## Modelo de datos
+## Data model
 
-El conocimiento se almacena como `%{source_pid => [positions]}`, donde cada entry está
-atribuida al dron que originalmente exploró esas posiciones. Esta atribución por fuente:
+Knowledge is stored as `%{source_pid => [positions]}`, where each entry is attributed
+to the drone that originally explored those positions. This per-source attribution:
 
-- **Previene eco** — `merge/2` filtra `self()`, así que no almacenas tu propia data de vuelta
-- **Evita duplicación** — la misma fuente siempre queda bajo la misma key
-- **Permite transitividad** — si A comparte info de B, C la recibe atribuida a B (no a A)
-- **Decae naturalmente** — `decay/1` elimina una posición por tick por entry
+- **Prevents echo** — `merge/2` filters `self()`, so you don't store your own data back
+- **Avoids duplication** — the same source always lives under the same key
+- **Enables transitivity** — if A shares B's info, C receives it attributed to B (not A)
+- **Decays naturally** — `decay/1` removes one position per tick per entry
 
-## Funciones públicas
+## Public functions
 
 ### `decay(received_visited)`
 
-Elimina la posición más vieja (última de la lista) de cada entry del conocimiento recibido.
-Las entries que quedan vacías se descartan automáticamente.
+Removes the oldest position (the last in the list) from each entry of received
+knowledge. Entries that become empty are dropped automatically.
 
 ```elixir
 received = %{pid_a => [%{x: 1, y: 1}, %{x: 2, y: 2}, %{x: 3, y: 3}]}
@@ -30,34 +30,34 @@ KnowledgeStore.decay(received)
 #=> %{pid_a => [%{x: 1, y: 1}, %{x: 2, y: 2}]}
 ```
 
-**Cuándo llamar:** Una vez por tick, al inicio de `compute_step/1`, antes de usar el
-conocimiento para tomar decisiones.
+**When to call:** Once per tick, at the start of `compute_step/1`, before using the
+knowledge to make decisions.
 
 ---
 
 ### `merge(received_visited, incoming_knowledge)`
 
-Merge de conocimiento entrante con el almacenado. Aplica dos reglas:
+Merges incoming knowledge with the stored one. Applies two rules:
 
-1. **Anti-eco:** Filtra entries keyed por `self()` del incoming
-2. **Frescura:** Por cada fuente, se queda con la lista más larga (más fresca)
-   entre la existente y la entrante
+1. **Anti-echo:** Filters out entries keyed by `self()` from the incoming map
+2. **Freshness:** For each source, keeps the longer (fresher) list between the
+   existing and the incoming one
 
 ```elixir
 existing = %{pid_a => [%{x: 1, y: 1}]}
 incoming = %{pid_a => [%{x: 1, y: 1}, %{x: 2, y: 2}], self() => [%{x: 3, y: 3}]}
 KnowledgeStore.merge(existing, incoming)
-#=> %{pid_a => [%{x: 1, y: 1}, %{x: 2, y: 2}]}  # self() filtrado, pid_a actualizado
+#=> %{pid_a => [%{x: 1, y: 1}, %{x: 2, y: 2}]}  # self() filtered, pid_a updated
 ```
 
-**Cuándo llamar:** En `handle_received_data/3`, al recibir conocimiento de un vecino.
+**When to call:** In `handle_received_data/3`, when receiving knowledge from a neighbor.
 
 ---
 
 ### `all_positions(visited, received_visited)`
 
-Combina las posiciones propias del dron con todas las posiciones recibidas en una lista
-plana. Útil para tener una visión unificada del conocimiento total.
+Combines the drone's own positions with all received positions into a flat list.
+Useful for getting a unified view of the total knowledge.
 
 ```elixir
 visited = [%{x: 1, y: 1}]
@@ -66,16 +66,16 @@ KnowledgeStore.all_positions(visited, received)
 #=> [%{x: 1, y: 1}, %{x: 2, y: 2}, %{x: 3, y: 3}]
 ```
 
-**Cuándo llamar:** En `compute_step/1`, para construir el mapa de calor o tomar
-decisiones basadas en todo el conocimiento disponible.
+**When to call:** In `compute_step/1`, to build the heatmap or make decisions
+based on all available knowledge.
 
 ---
 
 ### `build_shareable(visited, received_visited)`
 
-Construye el mapa de conocimiento para broadcast. Incluye:
-- Las posiciones propias del dron keyed por `self()`
-- Todo el conocimiento recibido (para propagación transitiva)
+Builds the knowledge map for broadcast. Includes:
+- The drone's own positions keyed by `self()`
+- All received knowledge (for transitive propagation)
 
 ```elixir
 visited = [%{x: 1, y: 1}]
@@ -84,14 +84,14 @@ KnowledgeStore.build_shareable(visited, received)
 #=> %{self() => [%{x: 1, y: 1}], pid_b => [%{x: 2, y: 2}]}
 ```
 
-**Cuándo llamar:** En `get_shared_data/1`, para armar el payload de broadcast.
+**When to call:** In `get_shared_data/1`, to assemble the broadcast payload.
 
 ---
 
 ### `format_for_export(algo_state)`
 
-Prepara el estado del algoritmo para consumo externo (panel de detalle del dron).
-Combina `:visited` y `:received_visited` en una sola lista `:visited` y elimina
+Prepares the algorithm state for external consumption (drone detail panel).
+Combines `:visited` and `:received_visited` into a single `:visited` list and removes
 `:received_visited`.
 
 ```elixir
@@ -100,8 +100,8 @@ KnowledgeStore.format_for_export(algo_state)
 #=> %{visited: [%{x: 1, y: 1}, %{x: 2, y: 2}]}
 ```
 
-**Cuándo llamar:** En `format_state/1` del algoritmo.
+**When to call:** In the algorithm's `format_state/1`.
 
-## Algoritmos que lo usan
+## Algorithms that use it
 
-- **HeatmapWalk** — usa todas las funciones para compartir y gestionar posiciones visitadas
+- **HeatmapWalk** — uses every function to share and manage visited positions

@@ -1,115 +1,116 @@
 # GreyWolf (GWO)
 
-**Módulo:** `Simulator.Algorithms.GreyWolf`
-**Archivo:** `lib/simulator/algorithms/impl/grey_wolf.ex`
-**Registro:** `"grey_wolf"`
+**Module:** `Simulator.Algorithms.GreyWolf`
+**File:** `lib/simulator/algorithms/impl/grey_wolf.ex`
+**Registry:** `"grey_wolf"`
 
-## Descripción
+## Description
 
-Grey Wolf Optimizer modificado para búsqueda ciega en espacio 2D continuo. La manada
-opera sin conocimiento inicial del objetivo, con una jerarquía de roles fija asignada
-por ID del dron.
+Grey Wolf Optimizer modified for blind search in continuous 2D space. The pack
+operates without prior knowledge of the objective, with a fixed role hierarchy
+assigned by drone ID.
 
-## Constantes
+## Constants
 
-| Constante | Valor | Descripción |
+| Constant | Value | Description |
 |-----------|-------|-------------|
-| `@step_size` | 5 | Píxeles de avance por tick |
-| `@arrival_threshold` | 3 | Distancia mínima para considerar llegada |
-| `@min_leader_distance` | 150.0 | Distancia mínima de seguridad entre líderes |
-| `@repulsion_strength` | 2.0 | Fuerza de repulsión entre líderes |
-| `@omega_spread` | 60 | Radio de offset para targets de omega alrededor de un líder |
-| `@a_initial` | 2.0 | Valor inicial del parámetro `a` de GWO |
-| `@a_decay` | 0.005 | Decremento de `a` por tick durante convergencia |
+| `@step_size` | 5 | Pixels advanced per tick |
+| `@arrival_threshold` | 3 | Minimum distance to consider arrival |
+| `@min_leader_distance` | 150.0 | Minimum safety distance between leaders |
+| `@repulsion_strength` | 2.0 | Repulsion strength between leaders |
+| `@omega_spread` | 60 | Offset radius for omega targets around a leader |
+| `@a_initial` | 2.0 | Initial value of GWO's `a` parameter |
+| `@a_decay` | 0.005 | Decrement of `a` per tick during convergence |
 
-## Comportamiento
+## Behavior
 
-### Asignación de roles
+### Role assignment
 
-Los roles se asignan por ID del dron de forma determinista:
+Roles are assigned deterministically by drone ID:
 
-| ID | Rol |
-|----|-----|
+| ID | Role |
+|----|------|
 | 1 | Alpha |
 | 2 | Beta |
 | 3 | Delta |
 | ≥4 | Omega |
 
-### Fase de Caza Dispersa (`objective_found` es `nil`)
+### Scattered hunt phase (`objective_found` is `nil`)
 
-#### Líderes (Alpha, Beta, Delta)
+#### Leaders (Alpha, Beta, Delta)
 
-Cada líder patrulla una zona asignada del mapa:
+Each leader patrols an assigned zone of the map:
 
-| Rol | Centro de zona | Bounds |
-|-----|---------------|--------|
-| Alpha | `(W/4, H/4)` | `[0, W/2] × [0, H/2]` (cuadrante superior izquierdo) |
-| Beta | `(3W/4, H/4)` | `[W/2, W] × [0, H/2]` (cuadrante superior derecho) |
-| Delta | `(W/2, 3H/4)` | `[0, W] × [H/2, H]` (mitad inferior completa) |
+| Role | Zone center | Bounds |
+|------|-------------|--------|
+| Alpha | `(W/4, H/4)` | `[0, W/2] × [0, H/2]` (top-left quadrant) |
+| Beta | `(3W/4, H/4)` | `[W/2, W] × [0, H/2]` (top-right quadrant) |
+| Delta | `(W/2, 3H/4)` | `[0, W] × [H/2, H]` (entire bottom half) |
 
-Los líderes generan targets random dentro de sus bounds y caminan hacia ellos.
-Cuando llegan, generan un nuevo target en su zona.
+Leaders generate random targets within their bounds and walk toward them.
+When they arrive, they generate a new target in their zone.
 
-**Repulsión entre líderes:** Si un líder está a menos de `@min_leader_distance` de otro
-líder conocido, se aplica una fuerza de repulsión que desvía el target. La fuerza es
-proporcional a `(@min_leader_distance - distancia) / @min_leader_distance`.
+**Leader-to-leader repulsion:** If a leader is closer than `@min_leader_distance` to
+another known leader, a repulsion force is applied that deflects the target. The force
+is proportional to `(@min_leader_distance - distance) / @min_leader_distance`.
 
 #### Omegas
 
-Los omega rastrean al líder conocido más cercano y generan targets con un offset random
-de ±`@omega_spread` píxeles alrededor de la posición del líder, proporcionando cobertura
-local. Si no conocen ningún líder, usan `random_open_point`.
+Omegas track the closest known leader and generate targets with a random offset of
+±`@omega_spread` pixels around the leader's position, providing local coverage.
+If they don't know any leader, they fall back to `random_open_point`.
 
-### Fase de Convergencia (`objective_found` es `%{x, y}`)
+### Convergence phase (`objective_found` is `%{x, y}`)
 
-Todos los lobos usan las ecuaciones clásicas de GWO para encerrar el objetivo:
+All wolves use the classic GWO equations to surround the objective:
 
 ```
-Para cada líder (alpha, beta, delta):
+For each leader (alpha, beta, delta):
   A = 2·a·r1 - a
   C = 2·r2
-  D = |C·líder_pos - pos|
-  X_líder = líder_pos - A·D
+  D = |C·leader_pos - pos|
+  X_leader = leader_pos - A·D
 
-Posición final = (X_alpha + X_beta + X_delta) / 3
+Final position = (X_alpha + X_beta + X_delta) / 3
 ```
 
-El parámetro `a` decrece linealmente de `@a_initial` (2.0) a 0 con rate `@a_decay` (0.005)
-por tick. Con `a` alto los lobos exploran ampliamente; con `a` bajo convergen estrechamente.
+The `a` parameter decreases linearly from `@a_initial` (2.0) to 0 at rate `@a_decay`
+(0.005) per tick. With high `a`, wolves explore widely; with low `a`, they converge
+tightly.
 
-Si las posiciones de los líderes no están disponibles en `known_leaders`, se usa la
-posición del objetivo como fallback.
+If the leaders' positions are not available in `known_leaders`, the objective's
+position is used as a fallback.
 
-### Comunicación
-- **Broadcast:** Comparte `%{type: :gwo, role: atom, position: %{x,y}, objective: %{x,y} | nil}`
-- **Recepción:**
-  - Si el emisor es líder (alpha/beta/delta), actualiza su posición en `:known_leaders`
-  - Si el mensaje incluye un objetivo y el receptor no tiene uno, lo almacena
-  - Ignora mensajes de tipo distinto a `:gwo`
+### Communication
+- **Broadcast:** Shares `%{type: :gwo, role: atom, position: %{x,y}, objective: %{x,y} | nil}`
+- **Reception:**
+  - If the sender is a leader (alpha/beta/delta), updates its position in `:known_leaders`
+  - If the message includes an objective and the receiver doesn't have one, stores it
+  - Ignores messages with a type other than `:gwo`
 
-## Callbacks implementados
+## Implemented callbacks
 
-| Callback | Implementado |
-|----------|:------------:|
-| `compute_step/1` | Si |
-| `get_shared_data/1` | Si |
-| `handle_received_data/3` | Si |
-| `format_state/1` | Si |
+| Callback | Implemented |
+|----------|:-----------:|
+| `compute_step/1` | Yes |
+| `get_shared_data/1` | Yes |
+| `handle_received_data/3` | Yes |
+| `format_state/1` | Yes |
 
-## Estado interno
+## Internal state
 
-| Key | Tipo | Descripción |
+| Key | Type | Description |
 |-----|------|-------------|
-| `:role` | `:alpha \| :beta \| :delta \| :omega` | Rol asignado por ID |
-| `:known_leaders` | `%{atom => %{x, y}}` | Posiciones conocidas de líderes |
-| `:objective_found` | `%{x, y} \| nil` | Ubicación del objetivo |
-| `:target` | `%{x, y}` | Target de movimiento actual |
-| `:a_param` | `float` | Parámetro `a` de GWO (solo en convergencia) |
+| `:role` | `:alpha \| :beta \| :delta \| :omega` | Role assigned by ID |
+| `:known_leaders` | `%{atom => %{x, y}}` | Known leader positions |
+| `:objective_found` | `%{x, y} \| nil` | Objective location |
+| `:target` | `%{x, y}` | Current movement target |
+| `:a_param` | `float` | GWO's `a` parameter (only during convergence) |
 
 ## format_state
 
-Elimina `:known_leaders` y `:a_param` del estado expuesto.
+Removes `:known_leaders` and `:a_param` from the exposed state.
 
-## Dependencias
+## Dependencies
 
 - `Geometry` — clamp, euclidean_distance, step_toward, path_collides?, random_open_point, inside_structure?

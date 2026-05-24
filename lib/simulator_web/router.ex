@@ -20,6 +20,7 @@ defmodule SimulatorWeb.Router do
 
     get "/", PageController, :home
     resources "/simulations", SimulationController
+    post "/simulations/:id/batch", SimulationController, :batch
 
     get "/execution/:id", ExecutionController, :show
     get "/execution_runs/:id", ExecutionRunController, :show

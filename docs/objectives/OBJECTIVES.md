@@ -1,32 +1,32 @@
-# Sistema de Objetivos
+# Objective System
 
-Los objetivos son entidades físicas dentro del mundo simulado que los drones deben encontrar.
-Tienen comportamientos pluggables — pueden ser estáticos o moverse según un patrón. Cada
-objetivo es un módulo Elixir que implementa la behaviour `Simulator.Objective`.
+Objectives are physical entities inside the simulated world that drones must find.
+They have pluggable behaviors — they can be static or move according to a pattern.
+Each objective is an Elixir module implementing the `Simulator.Objective` behaviour.
 
-## Behaviour y Callbacks
+## Behaviour and Callbacks
 
-### `init(map_params)` — obligatorio
+### `init(map_params)` — required
 
-Genera la posición inicial y el estado interno del objetivo.
+Generates the objective's initial position and internal state.
 
-**Entrada:**
+**Input:**
 - `map_params` — `%Simulator.Maps.MapParams{width, height, structures}`
 
-**Retorno:**
-- `{position, state}` — posición `%{x, y}` y estado interno `map()`
+**Return:**
+- `{position, state}` — `%{x, y}` position and `map()` internal state
 
-### `tick(position, state, map_params)` — obligatorio
+### `tick(position, state, map_params)` — required
 
-Avanza el objetivo un tick. Los objetivos estáticos retornan la posición sin cambios.
-Los objetivos móviles computan su nueva posición.
+Advances the objective by one tick. Static objectives return the position unchanged.
+Moving objectives compute their new position.
 
-**Retorno:**
+**Return:**
 - `{new_position, new_state}`
 
-## Registro de Objetivos
+## Objective Registry
 
-Los objetivos se registran en `Simulator.Objectives` (`lib/simulator/objectives/objectives.ex`):
+Objectives are registered in `Simulator.Objectives` (`lib/simulator/objectives/objectives.ex`):
 
 ```elixir
 @available_objectives %{
@@ -35,19 +35,19 @@ Los objetivos se registran en `Simulator.Objectives` (`lib/simulator/objectives/
 }
 ```
 
-- `get_objective("none")` retorna `nil` — simulación sin objetivo
-- `get_objective("static")` retorna `Simulator.Objectives.StaticObjective`
-- `get_available_objectives_keys/0` retorna `["none", "static", "aim_random_walk"]`
+- `get_objective("none")` returns `nil` — simulation without an objective
+- `get_objective("static")` returns `Simulator.Objectives.StaticObjective`
+- `get_available_objectives_keys/0` returns `["none", "static", "aim_random_walk"]`
 
-## Flujo de Vida del Objetivo
+## Objective Lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Creado: Executor inicia ObjectiveServer
-    Creado --> Activo: init() genera posición
-    Activo --> Activo: tick() cada ~30ms
-    Activo --> Encontrado: Dron dentro de 25px
-    Encontrado --> [*]: ObjectiveServer notifica Executor
+    [*] --> Created: Executor starts ObjectiveServer
+    Created --> Active: init() generates position
+    Active --> Active: tick() every ~30ms
+    Active --> Found: Drone within 25px
+    Found --> [*]: ObjectiveServer notifies Executor
 ```
 
 ```mermaid
@@ -61,38 +61,38 @@ sequenceDiagram
     OS->>Obj: init(map_params)
     Obj-->>OS: {position, state}
 
-    loop Cada ~30ms
+    loop Every ~30ms
         OS->>Obj: tick(position, state, map_params)
         Obj-->>OS: {new_position, new_state}
         OS->>PT: get_positions_map()
-        PT-->>OS: posiciones de drones
-        OS->>OS: Buscar dron dentro de 25px
+        PT-->>OS: drone positions
+        OS->>OS: Look for a drone within 25px
     end
 
     OS->>Ex: send({:objective_found, drone_id, position})
 ```
 
-## Detección
+## Detection
 
-El `ObjectiveServer` simula la detección por sensor:
+The `ObjectiveServer` simulates sensor-based detection:
 
-1. Lee todas las posiciones de los drones del `PositionTracker`
-2. Filtra drones desconectados (`disconnected: true`)
-3. Calcula la distancia euclidiana entre el objetivo y cada dron activo
-4. Si algún dron está dentro de `@detection_radius` (25px), lo considera como "finder"
-5. Notifica al Executor con `{:objective_found, drone_id, position}`
+1. Reads all drone positions from the `PositionTracker`
+2. Filters out disconnected drones (`disconnected: true`)
+3. Computes the Euclidean distance between the objective and each active drone
+4. If any drone is within `@detection_radius` (25px), it considers it the "finder"
+5. Notifies the Executor with `{:objective_found, drone_id, position}`
 
-Los drones **no saben** dónde está el objetivo. El descubrimiento ocurre por proximidad
-física, simulando un sensor real. Después de la detección, el Executor notifica a todos
-los drones via `receive_shared_data(:environment, %{type: :objective_found, position: pos})`.
+Drones **don't know** where the objective is. Discovery happens through physical
+proximity, simulating a real sensor. After detection, the Executor notifies all
+drones via `receive_shared_data(:environment, %{type: :objective_found, position: pos})`.
 
-## Implementar un Nuevo Objetivo
+## Implementing a New Objective
 
-1. Crear módulo en `lib/simulator/objectives/impl/`:
+1. Create a module under `lib/simulator/objectives/impl/`:
 
 ```elixir
-defmodule Simulator.Objectives.MiObjetivo do
-  @moduledoc "Descripción del objetivo."
+defmodule Simulator.Objectives.MyObjective do
+  @moduledoc "Description of the objective."
   @behaviour Simulator.Objective
 
   alias Simulator.Algorithms.Helpers.Geometry
@@ -106,39 +106,39 @@ defmodule Simulator.Objectives.MiObjetivo do
 
   @impl true
   def tick(position, state, _map_params) do
-    # Lógica de movimiento (o retornar sin cambios para estático)
+    # Movement logic (or return unchanged for a static objective)
     {position, state}
   end
 end
 ```
 
-2. Registrar en `@available_objectives` en `lib/simulator/objectives/objectives.ex`
-3. Agregar el alias en la lista de imports del módulo `Simulator.Objectives`
+2. Register it in `@available_objectives` in `lib/simulator/objectives/objectives.ex`
+3. Add the alias to the import list of the `Simulator.Objectives` module
 
-## Implementaciones
+## Implementations
 
-| Objetivo | Movimiento | Estado interno | Descripción |
-|----------|:----------:|:--------------:|-------------|
-| StaticObjective | No | — | Posición random fija, nunca se mueve |
-| AimRandomWalkObjective | Si | target | Camina hacia targets aleatorios, evita obstáculos |
+| Objective | Movement | Internal state | Description |
+|-----------|:--------:|:--------------:|-------------|
+| StaticObjective | No | — | Fixed random position, never moves |
+| AimRandomWalkObjective | Yes | target | Walks toward random targets, avoids obstacles |
 
 ### StaticObjective
 
-**Módulo:** `Simulator.Objectives.StaticObjective`
-**Archivo:** `lib/simulator/objectives/impl/static_objective.ex`
+**Module:** `Simulator.Objectives.StaticObjective`
+**File:** `lib/simulator/objectives/impl/static_objective.ex`
 
-Genera una posición random abierta (fuera de estructuras) al inicializarse y nunca
-se mueve. Es el objetivo más simple — los drones deben encontrar un punto fijo.
+Generates a random open position (outside structures) on initialization and never
+moves. The simplest objective — drones must find a fixed point.
 
 ### AimRandomWalkObjective
 
-**Módulo:** `Simulator.Objectives.AimRandomWalkObjective`
-**Archivo:** `lib/simulator/objectives/impl/aim_random_walk_objective.ex`
+**Module:** `Simulator.Objectives.AimRandomWalkObjective`
+**File:** `lib/simulator/objectives/impl/aim_random_walk_objective.ex`
 
-Reutiliza la misma lógica que el algoritmo `AimRandomWalk`: escoge un target aleatorio,
-camina hacia él paso a paso (`@step_size: 3`), y al llegar o colisionar con un obstáculo,
-genera un nuevo target. Se mueve más lento que los drones (`step_size: 3` vs `5`) para
-ser encontrable.
+Reuses the same logic as the `AimRandomWalk` algorithm: picks a random target,
+walks toward it step by step (`@step_size: 3`), and on arrival or obstacle
+collision, generates a new target. It moves slower than the drones (`step_size: 3`
+vs `5`) to remain findable.
 
-Usa `Geometry.step_toward/4`, `Geometry.path_collides?/3`, y `Geometry.random_open_point/3`
-— las mismas utilidades disponibles para los algoritmos de movimiento.
+It uses `Geometry.step_toward/4`, `Geometry.path_collides?/3`, and
+`Geometry.random_open_point/3` — the same utilities available to movement algorithms.

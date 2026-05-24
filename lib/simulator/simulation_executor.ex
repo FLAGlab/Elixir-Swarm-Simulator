@@ -77,7 +77,7 @@ defmodule Simulator.SimulationExecutor do
 
   @impl true
   def init(state) do
-    simulation = state.simulation
+    simulation = resolve_seed(state.simulation)
     Logger.info("SimulationExecutor: init excution #{simulation.name}")
 
     tracker_name = env_name("tracker", simulation.name)
@@ -105,6 +105,7 @@ defmodule Simulator.SimulationExecutor do
 
     new_state =
       state
+      |> Map.put(:simulation, simulation)
       |> Map.put(:agents, agents)
       |> Map.put(:tracker, tracker_pid)
       |> Map.put(:proximity_detector, proximity_pid)
@@ -189,6 +190,8 @@ defmodule Simulator.SimulationExecutor do
       map: simulation.map,
       objective: simulation.objective,
       swarm_size: simulation.swarm,
+      objective_seed: simulation.objective_seed,
+      swarm_seed: simulation.swarm_seed,
       duration_ms: duration_ms,
       ticks: state.tick_count,
       finder_drone_id: drone_id,
@@ -229,11 +232,27 @@ defmodule Simulator.SimulationExecutor do
 
   # Private ----------------------------------------------------------
 
-  defp spawn_agents(%{swarm: count, algorithm: algorithm, map: map}, tracker, relay) do
-    for id <- 1..count, into: %{} do
-      {:ok, pid} = Simulator.PointAgent.start_link(algorithm, map, tracker, relay, id)
+  defp spawn_agents(simulation, tracker, relay) do
+    config = %{
+      algorithm: simulation.algorithm,
+      map: simulation.map,
+      swarm_seed: simulation.swarm_seed
+    }
+
+    env = %{tracker: tracker, relay: relay}
+
+    for id <- 1..simulation.swarm, into: %{} do
+      {:ok, pid} = Simulator.PointAgent.start_link(config, env, id)
       {id, %{pid: pid, disconnected: false}}
     end
+  end
+
+  defp resolve_seed(simulation) do
+    %{
+      simulation
+      | objective_seed: simulation.objective_seed || :erlang.system_time(:nanosecond),
+        swarm_seed: simulation.swarm_seed || :erlang.system_time(:nanosecond)
+    }
   end
 
   defp start_objective_server(simulation, tracker_name) do
@@ -249,7 +268,8 @@ defmodule Simulator.SimulationExecutor do
             objective_module: objective_module,
             map_params: map_params,
             tracker: tracker_name,
-            executor: self()
+            executor: self(),
+            objective_seed: simulation.objective_seed
           )
 
         pid

@@ -11,8 +11,9 @@ defmodule SimulatorWeb.SimulationChannel do
   or `"deselect_drone"` events. When a drone is selected, each tick also
   pushes a `"drone_detail"` event with that agent's detailed state.
 
-  Subscribes to PubSub for `"simulation_complete"` events. When the objective
-  is found, pushes the result to the client and stops ticking.
+  When the `SimulationManager` reports the run as completed (via the tick
+  response), the channel pushes a `"simulation_complete"` event and stops
+  scheduling further ticks.
   """
 
   use SimulatorWeb, :channel
@@ -28,10 +29,7 @@ defmodule SimulatorWeb.SimulationChannel do
   def join("simulation:" <> id, _params, socket) do
     simulation = Simulations.get_simulation!(id)
 
-    Phoenix.PubSub.subscribe(Simulator.PubSub, "simulation:#{simulation.id}")
-
-    data = %{simulation: simulation}
-    result = GenServer.call(Simulator.SimulationManager, {:start_execution, data})
+    result = Simulator.SimulationManager.start_execution(simulation)
     Logger.info("SimulationChannel: start execution response #{inspect(result)}")
 
     schedule_tick()
@@ -64,18 +62,6 @@ defmodule SimulatorWeb.SimulationChannel do
   end
 
   @impl true
-  def handle_info({:simulation_complete, %{execution_run_id: run_id, stats: stats}}, socket) do
-    push(socket, "simulation_complete", %{
-      execution_run_id: run_id,
-      finder_drone_id: stats.finder_drone_id,
-      duration_ms: stats.duration_ms,
-      ticks: stats.ticks
-    })
-
-    {:noreply, assign(socket, :completed, true)}
-  end
-
-  @impl true
   def handle_info(:tick, %{assigns: %{completed: true}} = socket) do
     {:noreply, socket}
   end
@@ -86,6 +72,16 @@ defmodule SimulatorWeb.SimulationChannel do
     data = %{simulation: simulation}
 
     case GenServer.call(Simulator.SimulationManager, {:get_positions, data}) do
+      %{completed: true, execution_run_id: run_id, stats: stats} ->
+        push(socket, "simulation_complete", %{
+          execution_run_id: run_id,
+          finder_drone_id: stats.finder_drone_id,
+          duration_ms: stats.duration_ms,
+          ticks: stats.ticks
+        })
+
+        {:noreply, assign(socket, :completed, true)}
+
       %{positions: positions} = response ->
         payload = %{positions: positions}
 
@@ -96,15 +92,15 @@ defmodule SimulatorWeb.SimulationChannel do
           end
 
         push(socket, "positions", payload)
+        push_selected_drone_detail(socket)
+        schedule_tick()
+        {:noreply, socket}
 
       _ ->
-        :ok
+        push_selected_drone_detail(socket)
+        schedule_tick()
+        {:noreply, socket}
     end
-
-    push_selected_drone_detail(socket)
-
-    schedule_tick()
-    {:noreply, socket}
   end
 
   # Private ----------------------------------------------------------

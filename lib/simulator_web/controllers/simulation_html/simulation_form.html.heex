@@ -19,6 +19,20 @@
     label="Objective"
     options={@objectives}
   />
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <.input
+      field={f[:objective_seed]}
+      type="number"
+      label="Objective seed (optional)"
+      placeholder="Leave blank for a random seed per run"
+    />
+    <.input
+      field={f[:swarm_seed]}
+      type="number"
+      label="Swarm seed (optional)"
+      placeholder="Leave blank for a random seed per run"
+    />
+  </div>
 
   <footer class="flex items-center gap-3 pt-2">
     <.button variant="primary">Save Simulation</.button>

@@ -1,43 +1,42 @@
 # RandomWalk
 
-**Módulo:** `Simulator.Algorithms.RandomWalk`
-**Archivo:** `lib/simulator/algorithms/impl/random_walk.ex`
-**Registro:** `"random_walk"`
+**Module:** `Simulator.Algorithms.RandomWalk`
+**File:** `lib/simulator/algorithms/impl/random_walk.ex`
+**Registry:** `"random_walk"`
 
-## Descripción
+## Description
 
-Caminata aleatoria: en cada tick, desplaza la posición en X e Y por un delta random
-pequeño. Si el movimiento candidato colisiona con un obstáculo, reintenta hasta
-`@max_attempts` veces. Es el algoritmo por defecto cuando se proporciona un nombre
-no reconocido.
+Random walk: on each tick, shifts the position by a small random delta on X and Y.
+If the candidate move collides with an obstacle, retries up to `@max_attempts` times.
+This is the default algorithm when an unrecognized name is provided.
 
-## Constantes
+## Constants
 
-| Constante | Valor | Descripción |
+| Constant | Value | Description |
 |-----------|-------|-------------|
-| `@max_attempts` | 10 | Reintentos máximos para encontrar un movimiento válido |
+| `@max_attempts` | 10 | Maximum retries to find a valid move |
 
-## Comportamiento
+## Behavior
 
-1. Genera un candidato: `position ± random(-5..5)` en cada eje, clampeado al mapa
-2. Verifica colisión del path con `Geometry.path_collides?/3`
-3. Si colisiona, reintenta (hasta `@max_attempts`). Si se agotan, se queda en su lugar
-4. No modifica el estado del algoritmo
+1. Generates a candidate: `position ± random(-5..5)` on each axis, clamped to the map
+2. Checks path collision with `Geometry.path_collides?/3`
+3. If it collides, retries (up to `@max_attempts`). If exhausted, stays in place
+4. Does not modify the algorithm state
 
-## Callbacks implementados
+## Implemented callbacks
 
-| Callback | Implementado |
-|----------|:------------:|
-| `compute_step/1` | Si |
+| Callback | Implemented |
+|----------|:-----------:|
+| `compute_step/1` | Yes |
 | `get_shared_data/1` | No |
 | `handle_received_data/3` | No |
 | `format_state/1` | No |
 
-## Estado interno
+## Internal state
 
-Ninguno. El estado se retorna sin modificaciones.
+None. The state is returned unchanged.
 
-## Dependencias
+## Dependencies
 
-- `Geometry.clamp/3` — limitar posición dentro del mapa
-- `Geometry.path_collides?/3` — detección de colisiones con obstáculos
+- `Geometry.clamp/3` — constrain the position within the map
+- `Geometry.path_collides?/3` — collision detection against obstacles

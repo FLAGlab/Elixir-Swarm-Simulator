@@ -1,31 +1,31 @@
 # PointAgent
 
-**Módulo:** `Simulator.PointAgent`
-**Archivo:** `lib/simulator/point_agent.ex`
+**Module:** `Simulator.PointAgent`
+**File:** `lib/simulator/point_agent.ex`
 
-## Descripción
+## Description
 
-Modela un **dron autónomo** como un proceso GenServer. Cada PointAgent representa un miembro
-del enjambre que opera exclusivamente con **información local** — conoce su posición, su mapa
-(pre-cargado, como un GPS offline), sus vecinos detectados, y datos recibidos de otros drones.
-No accede a estado externo directamente, tal como un dron real estaría limitado a sus propios
-sensores y comunicaciones.
+Models an **autonomous drone** as a GenServer process. Each PointAgent represents a
+swarm member that operates exclusively on **local information** — it knows its
+position, its map (preloaded, like an offline GPS), its detected neighbors, and
+data received from other drones. It does not access external state directly, just
+as a real drone would be limited to its own sensors and communications.
 
-## Ciclo de Tick
+## Tick Cycle
 
 ```mermaid
 flowchart TD
     Tick[":tick"] --> Compute["algorithm.compute_step(state)"]
-    Compute --> NewPos["Actualiza posición"]
+    Compute --> NewPos["Update position"]
     NewPos --> Report["PositionTracker.report_position()"]
-    Report --> Share{"get_shared_data\nretorna datos?"}
-    Share -- "Si" --> Broadcast["CommunicationRelay.broadcast()"]
-    Share -- "No (vacío)" --> Schedule
+    Report --> Share{"get_shared_data\nreturns data?"}
+    Share -- "Yes" --> Broadcast["CommunicationRelay.broadcast()"]
+    Share -- "No (empty)" --> Schedule
     Broadcast --> Schedule["Schedule next :tick"]
     Schedule --> Tick
 ```
 
-## Flujo de Mensajes
+## Message Flow
 
 ```mermaid
 sequenceDiagram
@@ -35,7 +35,7 @@ sequenceDiagram
     participant PT as PositionTracker
     participant CR as CommunicationRelay
 
-    loop Cada ~30ms
+    loop Every ~30ms
         PA->>Algo: compute_step(state)
         Algo-->>PA: {new_position, updated_state}
         PA->>PT: report_position(self, position)
@@ -45,101 +45,102 @@ sequenceDiagram
     end
 
     PD->>PA: drone_entered(neighbor_pid, pos)
-    Note over PA: Agrega a state.neighbors
+    Note over PA: Add to state.neighbors
     PD->>PA: drone_left(neighbor_pid)
-    Note over PA: Elimina de state.neighbors
+    Note over PA: Remove from state.neighbors
 
     CR->>PA: received_data(sender, data)
     PA->>Algo: handle_received_data(sender, data, state)
     Algo-->>PA: updated_state
 ```
 
-## Estado
+## State
 
 ```elixir
 %{
-  id: integer(),              # Identificador numérico del dron
-  position: %{x, y},         # Posición actual
-  algorithm: module(),        # Módulo del algoritmo de movimiento
-  map: %MapParams{},         # Parámetros del mapa (width, height, structures)
-  neighbors: %{pid => %{x, y}},  # Vecinos detectados por el entorno
-  tracker: pid(),             # PID del PositionTracker
-  relay: pid(),               # PID del CommunicationRelay
-  # + keys del algoritmo (e.g., :target, :velocity, :visited, etc.)
+  id: integer(),              # Numeric drone identifier
+  position: %{x, y},         # Current position
+  algorithm: module(),        # Movement algorithm module
+  map: %MapParams{},         # Map parameters (width, height, structures)
+  neighbors: %{pid => %{x, y}},  # Neighbors detected by the environment
+  tracker: pid(),             # PositionTracker PID
+  relay: pid(),               # CommunicationRelay PID
+  # + algorithm keys (e.g., :target, :velocity, :visited, etc.)
 }
 ```
 
-## Posición Inicial
+## Initial Position
 
-Definida por el `spawn_point` del mapa (e.g., `%{x: 250, y: 250}` para CleanMap).
-Todos los agentes de una simulación comparten el mismo punto de spawn.
+Defined by the map's `spawn_point` (e.g., `%{x: 250, y: 250}` for CleanMap).
+All agents in a simulation share the same spawn point.
 
 ## Tick Loop
 
-Cada `@update_interval` ms (configurable via `Application.compile_env(:simulator, :tick_interval, 30)`),
-el dron ejecuta su ciclo en `handle_info(:tick)`:
+Every `@update_interval` ms (configurable via `Application.compile_env(:simulator, :tick_interval, 30)`),
+the drone runs its cycle in `handle_info(:tick)`:
 
-1. **Movimiento**: `algorithm.compute_step(state)` → `{new_position, updated_state}`
-2. **Reporte de posición**: `PositionTracker.report_position(tracker, self(), position)`
-3. **Broadcast de datos**: Si el algoritmo define `get_shared_data/1` y retorna datos no vacíos,
-   los envía al `CommunicationRelay.broadcast(relay, self(), data)`
-4. **Schedule next tick**: `Process.send_after(self(), :tick, @update_interval)`
+1. **Movement:** `algorithm.compute_step(state)` → `{new_position, updated_state}`
+2. **Position report:** `PositionTracker.report_position(tracker, self(), position)`
+3. **Data broadcast:** If the algorithm defines `get_shared_data/1` and returns non-empty data,
+   sends it to `CommunicationRelay.broadcast(relay, self(), data)`
+4. **Schedule next tick:** `Process.send_after(self(), :tick, @update_interval)`
 
-## Mensajes Entrantes
+## Incoming Messages
 
 ### Via `handle_cast`
 
-| Mensaje | Origen | Efecto |
+| Message | Origin | Effect |
 |---------|--------|--------|
-| `{:drone_entered, pid, pos}` | ProximityDetector | Agrega vecino a `state.neighbors` |
-| `{:drone_left, pid}` | ProximityDetector | Elimina vecino de `state.neighbors` |
-| `{:received_data, sender, data}` | CommunicationRelay | Llama `Algorithm.receive_data(algorithm, sender, data, state)` |
+| `{:drone_entered, pid, pos}` | ProximityDetector | Adds the neighbor to `state.neighbors` |
+| `{:drone_left, pid}` | ProximityDetector | Removes the neighbor from `state.neighbors` |
+| `{:received_data, sender, data}` | CommunicationRelay | Calls `Algorithm.receive_data(algorithm, sender, data, state)` |
 
 ### Via `handle_call`
 
-| Mensaje | Origen | Respuesta |
-|---------|--------|-----------|
+| Message | Origin | Response |
+|---------|--------|----------|
 | `:get_position` | SimulationExecutor | `%{x, y}` |
-| `:get_detail` | SimulationExecutor | Estado completo con `algorithm_state` estructurado (`%{detail_fields, overlay}`) por `Algorithm.format_state/2` |
+| `:get_detail` | SimulationExecutor | Full state with `algorithm_state` structured (`%{detail_fields, overlay}`) by `Algorithm.format_state/2` |
 
-## API Pública
+## Public API
 
-| Función | Descripción |
-|---------|-------------|
-| `start_link(algorithm, map, tracker, relay, id)` | Inicia el GenServer con el algoritmo y mapa resueltos |
-| `get_position(pid)` | Retorna la posición actual del dron |
-| `get_detail(pid)` | Retorna el estado detallado (posición + estado del algoritmo formateado) |
-| `notify_drone_entered(pid, drone_pid, position)` | Notifica que un dron entró en rango |
-| `notify_drone_left(pid, drone_pid)` | Notifica que un dron salió de rango |
-| `receive_shared_data(pid, sender, data)` | Entrega datos compartidos de un vecino |
+| Function | Description |
+|----------|-------------|
+| `start_link(algorithm, map, tracker, relay, id)` | Starts the GenServer with the resolved algorithm and map |
+| `get_position(pid)` | Returns the drone's current position |
+| `get_detail(pid)` | Returns the detailed state (position + formatted algorithm state) |
+| `notify_drone_entered(pid, drone_pid, position)` | Notifies that a drone has entered range |
+| `notify_drone_left(pid, drone_pid)` | Notifies that a drone has left range |
+| `receive_shared_data(pid, sender, data)` | Delivers shared data from a neighbor |
 
-## Inicialización
+## Initialization
 
-En `init/1`, el PointAgent:
-1. Resuelve el nombre del algoritmo a un módulo via `Simulator.Algorithms.get_algorithm/1`
-2. Resuelve el nombre del mapa a parámetros via `Simulator.Maps.get_map/1`
-3. Valida que los PIDs del tracker y relay sean procesos vivos
-4. Establece la posición inicial en `map.spawn_point`
-5. Programa el primer tick
+In `init/1`, the PointAgent:
+1. Resolves the algorithm name to a module via `Simulator.Algorithms.get_algorithm/1`
+2. Resolves the map name to parameters via `Simulator.Maps.get_map/1`
+3. Validates that the tracker and relay PIDs are live processes
+4. Sets the initial position to `map.spawn_point`
+5. Schedules the first tick
 
-Si el algoritmo o mapa no se reconocen, se loguea un warning y se usan los defaults
-(RandomWalk y CleanMap respectivamente).
+If the algorithm or map is not recognized, a warning is logged and the defaults
+are used (RandomWalk and CleanMap, respectively).
 
-## Principio de Autonomía
+## Autonomy Principle
 
-El dron solo puede actuar sobre información que podría tener de forma realista:
-- Su posición
-- El mapa estático
-- Vecinos detectados por el entorno (ProximityDetector)
-- Datos compartidos por esos vecinos (via CommunicationRelay)
+The drone can only act on information it could realistically have:
+- Its position
+- The static map
+- Neighbors detected by the environment (ProximityDetector)
+- Data shared by those neighbors (via CommunicationRelay)
 
-**No puede** consultar posiciones de otros drones directamente, ni conocer ubicaciones
-de objetivos salvo que el entorno se lo comunique explícitamente.
+It **cannot** query other drones' positions directly, nor know objective locations
+unless the environment communicates them explicitly.
 
-**Comportamiento ante desconexión:** Cuando el Executor desconecta un dron via
-`toggle_drone_connection`, el entorno bloquea sus comunicaciones (PositionTracker ignora
-sus `report_position`, CommunicationRelay ignora sus broadcasts, ProximityDetector lo
-excluye del cálculo de vecinos). El PointAgent **no recibe ninguna notificación** — sigue
-ejecutando su tick loop con estado obsoleto (vecinos antiguos, datos del algoritmo sin
-actualizar). Al reconectarse, el ProximityDetector eventualmente corrige enviando
-`drone_left`/`drone_entered` en los siguientes ciclos, simulando una reconexión real.
+**Behavior on disconnection:** When the Executor disconnects a drone via
+`toggle_drone_connection`, the environment blocks its communications (PositionTracker
+ignores its `report_position`, CommunicationRelay ignores its broadcasts,
+ProximityDetector excludes it from neighbor calculations). The PointAgent **receives
+no notification** — it keeps running its tick loop with stale state (old neighbors,
+outdated algorithm data). Upon reconnection, the ProximityDetector eventually
+corrects this by sending `drone_left`/`drone_entered` over the next cycles,
+simulating a real reconnection.

@@ -63,6 +63,17 @@
       </div>
     </div>
 
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+      <div class="rounded-box bg-base-200 p-6">
+        <p class="text-sm text-base-content/60 mb-1">Objective seed</p>
+        <p class="text-lg font-semibold font-mono">{@execution_run.objective_seed}</p>
+      </div>
+      <div class="rounded-box bg-base-200 p-6">
+        <p class="text-sm text-base-content/60 mb-1">Swarm seed</p>
+        <p class="text-lg font-semibold font-mono">{@execution_run.swarm_seed}</p>
+      </div>
+    </div>
+
     <%= if @execution_run.objective_position do %>
       <div class="mt-6">
         <div class="rounded-box bg-base-200 p-6 inline-block">

@@ -29,6 +29,9 @@ defmodule Simulator.Environment.ObjectiveServer do
     - `:map_params` — map parameters struct (required)
     - `:tracker` — PositionTracker PID or name (required)
     - `:executor` — Executor PID to notify on detection (required)
+    - `:objective_seed` — optional integer; when set, seeds the server's
+      `:rand` state so objective placement and movement are reproducible.
+      Defaults to nil.
   """
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
@@ -49,6 +52,9 @@ defmodule Simulator.Environment.ObjectiveServer do
     map_params = Keyword.fetch!(opts, :map_params)
     tracker = Keyword.fetch!(opts, :tracker)
     executor = Keyword.fetch!(opts, :executor)
+    objective_seed = Keyword.get(opts, :objective_seed)
+
+    seed_rand(objective_seed)
 
     {position, objective_state} = objective_module.init(map_params)
 
@@ -110,6 +116,13 @@ defmodule Simulator.Environment.ObjectiveServer do
   end
 
   # Private ----------------------------------------------------------
+
+  defp seed_rand(nil), do: :ok
+
+  defp seed_rand(objective_seed) when is_integer(objective_seed) do
+    :rand.seed(:exsss, objective_seed)
+    :ok
+  end
 
   defp schedule_tick do
     Process.send_after(self(), :tick, @tick_interval)

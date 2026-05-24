@@ -1,64 +1,65 @@
-# Sistema de Algoritmos
+# Algorithm System
 
-Los algoritmos son el cerebro de cada dron. Definen cómo se mueve, qué información comparte
-con vecinos, y cómo procesa la información que recibe. Cada algoritmo es un módulo Elixir
-que implementa la behaviour `Simulator.Algorithm`.
+Algorithms are the brain of every drone. They define how it moves, what information
+it shares with neighbors, and how it processes the information it receives. Each
+algorithm is an Elixir module implementing the `Simulator.Algorithm` behaviour.
 
-## Behaviour y Callbacks
+## Behaviour and Callbacks
 
-### `compute_step(state)` — obligatorio
+### `compute_step(state)` — required
 
-Computa el siguiente paso del dron. Recibe el estado completo del agente y retorna
+Computes the drone's next step. Receives the full agent state and returns
 `{new_position, updated_state}`.
 
-**Estado de entrada (`state`):**
-- `state.position` — posición actual `%{x, y}`
+**Input state (`state`):**
+- `state.position` — current position `%{x, y}`
 - `state.map` — `%Simulator.Maps.MapParams{width, height, structures}`
-- `state.neighbors` — `%{pid => %{x, y}}` drones detectados en rango
-- `state.id` — identificador numérico del dron
-- Cualquier key adicional que el algoritmo haya agregado en ticks anteriores
+- `state.neighbors` — `%{pid => %{x, y}}` drones detected within range
+- `state.id` — numeric identifier of the drone
+- Any additional key the algorithm has added in previous ticks
 
-**Retorno:**
+**Return:**
 - `new_position` — `%{x: integer(), y: integer()}`
-- `updated_state` — estado del agente con keys internas del algoritmo actualizadas
+- `updated_state` — agent state with the algorithm's internal keys updated
 
-### `get_shared_data(state)` — opcional
+### `get_shared_data(state)` — optional
 
-Define qué información el dron comparte con sus vecinos en cada tick. El dato se envía
-al `CommunicationRelay`, que lo entrega solo a drones dentro del radio de detección.
+Defines what information the drone shares with its neighbors on every tick. The
+data is sent to the `CommunicationRelay`, which delivers it only to drones within
+the detection radius.
 
-- Retorna un `map()` con los datos a compartir
-- Default: `%{}` (no comparte nada)
+- Returns a `map()` with the data to share
+- Default: `%{}` (shares nothing)
 
-### `handle_received_data(sender, data, state)` — opcional
+### `handle_received_data(sender, data, state)` — optional
 
-Procesa datos recibidos de un dron vecino. Llamado por el agente cuando el
-`CommunicationRelay` le entrega un mensaje.
+Processes data received from a neighboring drone. Called by the agent when the
+`CommunicationRelay` delivers a message.
 
-- `sender` — PID del dron emisor
-- `data` — el mapa retornado por `get_shared_data/1` del emisor
-- `state` — estado actual del agente
-- Retorna el estado actualizado
-- Default: estado sin cambios
+- `sender` — PID of the sending drone
+- `data` — the map returned by the sender's `get_shared_data/1`
+- `state` — agent's current state
+- Returns the updated state
+- Default: state unchanged
 
-### `format_state(algo_state)` — opcional
+### `format_state(algo_state)` — optional
 
-Prepara el estado del algoritmo para consumo externo (panel de detalle del dron).
-Debe retornar un mapa estructurado con dos keys:
+Prepares the algorithm state for external consumption (drone detail panel).
+Must return a structured map with two keys:
 
-- `:detail_fields` — lista de campos a mostrar, cada uno con `:label`, `:value`, y `:type`
-- `:overlay` — `nil` o mapa con `:cells` (lista de `%{x, y, intensity}`) y `:color` (string RGB)
+- `:detail_fields` — list of fields to show, each with `:label`, `:value`, and `:type`
+- `:overlay` — `nil` or a map with `:cells` (list of `%{x, y, intensity}`) and `:color` (RGB string)
 
-**Tipos de campo soportados:**
+**Supported field types:**
 
-| Tipo | Renderizado en frontend |
-|------|------------------------|
-| `"text"` | Valor como string plano |
-| `"position"` | `(x, y)` desde un mapa `%{x, y}` |
-| `"badge"` | Badge/tag estilizado |
+| Type | Frontend rendering |
+|------|--------------------|
+| `"text"` | Value as a plain string |
+| `"position"` | `(x, y)` from a `%{x, y}` map |
+| `"badge"` | Styled badge/tag |
 | `"boolean"` | "Yes" / "No" |
 
-**Ejemplo:**
+**Example:**
 
 ```elixir
 @impl true
@@ -78,24 +79,24 @@ def format_state(algo_state) do
 end
 ```
 
-- `algo_state` — estado del algoritmo (sin keys del sistema como `:position`, `:neighbors`, etc.)
-- Default: `%{detail_fields: [], overlay: nil}` (panel muestra solo posición y vecinos)
+- `algo_state` — algorithm state (without system keys like `:position`, `:neighbors`, etc.)
+- Default: `%{detail_fields: [], overlay: nil}` (panel shows only position and neighbors)
 
-## Reglas de Estado
+## State Rules
 
-Los algoritmos persisten estado entre ticks agregando keys al mapa de estado del agente.
-En cada llamada a `compute_step/1`, el algoritmo recibe su estado anterior y retorna el
-actualizado. Reglas importantes:
+Algorithms persist state between ticks by adding keys to the agent's state map. On
+every call to `compute_step/1`, the algorithm receives its previous state and returns
+the updated one. Important rules:
 
-1. **No modificar keys del sistema** — `:position`, `:map`, `:neighbors`, `:id`, `:algorithm`
-   son gestionadas por `PointAgent`. El algoritmo solo lee estas keys.
-2. **Retornar siempre el estado** — incluso si no cambió, devolver `state` en la tupla.
-3. **Keys propias** — cada algoritmo usa sus propias keys (e.g., `:target`, `:velocity`,
-   `:pheromone_grid`). No hay conflicto entre algoritmos porque solo uno corre por agente.
-4. **Inicialización lazy** — usar `Map.get(state, :key) || valor_inicial` para inicializar
-   estado en el primer tick, sin necesidad de un init separado.
+1. **Do not modify system keys** — `:position`, `:map`, `:neighbors`, `:id`, `:algorithm`
+   are managed by `PointAgent`. The algorithm only reads these keys.
+2. **Always return the state** — even when unchanged, return `state` in the tuple.
+3. **Own keys** — each algorithm uses its own keys (e.g., `:target`, `:velocity`,
+   `:pheromone_grid`). There is no conflict between algorithms because only one runs per agent.
+4. **Lazy initialization** — use `Map.get(state, :key) || initial_value` to initialize
+   state on the first tick, with no need for a separate init step.
 
-## Sistema de Comunicación
+## Communication System
 
 ```mermaid
 sequenceDiagram
@@ -106,7 +107,7 @@ sequenceDiagram
     participant B as Drone B
     participant Algo_B as Algorithm B
 
-    Note over A,B: Tick de Drone A
+    Note over A,B: Drone A's tick
 
     A->>Algo_A: get_shared_data(state)
     Algo_A-->>A: %{type: :x, data: ...}
@@ -120,50 +121,50 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    subgraph "Propagación Transitiva"
-        A["Drone A"] -- "comparte\nposiciones" --> B["Drone B"]
-        B -- "incluye data de A\nen su broadcast" --> C["Drone C"]
-        A -. "nunca en rango\npero C conoce\ndata de A" .-> C
+    subgraph "Transitive propagation"
+        A["Drone A"] -- "shares\npositions" --> B["Drone B"]
+        B -- "includes A's data\nin its broadcast" --> C["Drone C"]
+        A -. "never in range\nbut C knows\nA's data" .-> C
     end
 ```
 
-La comunicación entre drones es descentralizada y de alcance limitado:
+Communication between drones is decentralized and range-limited:
 
-1. **Broadcast** — en cada tick, `PointAgent` llama `get_shared_data(state)` del algoritmo
-   y envía el resultado al `CommunicationRelay`.
-2. **Entrega** — el `CommunicationRelay` consulta al `ProximityDetector` para obtener los
-   vecinos del emisor y entrega el mensaje solo a drones dentro del radio de detección.
-3. **Recepción** — cuando un dron recibe un mensaje, `PointAgent` llama
-   `handle_received_data(sender, data, state)` del algoritmo para actualizar el estado.
+1. **Broadcast** — on every tick, `PointAgent` calls the algorithm's `get_shared_data(state)`
+   and sends the result to the `CommunicationRelay`.
+2. **Delivery** — the `CommunicationRelay` queries the `ProximityDetector` for the
+   sender's neighbors and delivers the message only to drones within the detection radius.
+3. **Reception** — when a drone receives a message, `PointAgent` calls the algorithm's
+   `handle_received_data(sender, data, state)` to update the state.
 
-La información se propaga transitivamente: si A comparte con B, y B incluye los datos
-de A en su propio broadcast, C puede recibir información de A a través de B sin haber
-estado nunca en su rango.
+Information propagates transitively: if A shares with B, and B includes A's data in
+its own broadcast, C can receive information from A through B without ever having
+been in A's range.
 
-### Patrones de comunicación
+### Communication patterns
 
-| Patrón | Ejemplo | Merge |
-|--------|---------|-------|
-| Broadcast de posición | PSO, GWO | Almacenar última posición conocida |
-| Conocimiento por fuente | HeatmapWalk | `KnowledgeStore` — merge por PID original, decay por tick |
-| Grid compartido | AntColony | `max` por celda — idempotente, sin eco |
-| Evento único | PSO objetivo encontrado | Guardar una vez, ignorar duplicados |
+| Pattern | Example | Merge |
+|---------|---------|-------|
+| Position broadcast | PSO, GWO | Store last known position |
+| Per-source knowledge | HeatmapWalk | `KnowledgeStore` — merge by original PID, decay per tick |
+| Shared grid | AntColony | `max` per cell — idempotent, no echo |
+| One-time event | PSO objective found | Store once, ignore duplicates |
 
-## Invocación desde PointAgent
+## Invocation from PointAgent
 
-`PointAgent` es un GenServer que ejecuta el ciclo cada tick (~30ms):
+`PointAgent` is a GenServer that runs the cycle every tick (~30ms):
 
-1. `algorithm.compute_step(state)` → actualiza posición y estado
-2. `Algorithm.shared_data(algorithm, state)` → obtiene datos a compartir
-3. Envía datos al `CommunicationRelay`
-4. Al recibir mensajes: `Algorithm.receive_data(algorithm, sender, data, state)`
+1. `algorithm.compute_step(state)` → updates position and state
+2. `Algorithm.shared_data(algorithm, state)` → obtains data to share
+3. Sends data to the `CommunicationRelay`
+4. On message reception: `Algorithm.receive_data(algorithm, sender, data, state)`
 
-Los helpers en `Simulator.Algorithm` (`shared_data/2`, `receive_data/4`, `format_state/2`)
-verifican si el callback está implementado antes de llamarlo, usando `function_exported?/3`.
+The helpers in `Simulator.Algorithm` (`shared_data/2`, `receive_data/4`, `format_state/2`)
+check whether the callback is implemented before calling it, using `function_exported?/3`.
 
-## Registro de Algoritmos
+## Algorithm Registry
 
-Los algoritmos se registran en `Simulator.Algorithms` (`lib/simulator/algorithms/algorithms.ex`):
+Algorithms are registered in `Simulator.Algorithms` (`lib/simulator/algorithms/algorithms.ex`):
 
 ```elixir
 @available_algorithms %{
@@ -177,68 +178,68 @@ Los algoritmos se registran en `Simulator.Algorithms` (`lib/simulator/algorithms
 }
 ```
 
-- `get_algorithm/1` acepta strings (busca en el registry) o módulos atom (los devuelve directamente)
-- Si el string no se encuentra, se usa `RandomWalk` por defecto
+- `get_algorithm/1` accepts strings (looked up in the registry) or atom modules (returned as-is)
+- If the string is not found, `RandomWalk` is used as the default
 
-## Implementar un Nuevo Algoritmo
+## Implementing a New Algorithm
 
-### Algoritmo básico (solo movimiento)
+### Basic algorithm (movement only)
 
-1. Crear módulo en `lib/simulator/algorithms/impl/`:
+1. Create a module under `lib/simulator/algorithms/impl/`:
 
 ```elixir
-defmodule Simulator.Algorithms.MiAlgoritmo do
-  @moduledoc "Descripción del algoritmo."
+defmodule Simulator.Algorithms.MyAlgorithm do
+  @moduledoc "Description of the algorithm."
   @behaviour Simulator.Algorithm
 
   alias Simulator.Algorithms.Helpers.Geometry
 
   @impl true
   def compute_step(%{position: position, map: map} = state) do
-    # Calcular nueva posición
+    # Compute new position
     new_position = %{x: ..., y: ...}
     {new_position, state}
   end
 end
 ```
 
-2. Registrar en `@available_algorithms` en `lib/simulator/algorithms/algorithms.ex`
+2. Register it in `@available_algorithms` in `lib/simulator/algorithms/algorithms.ex`
 
-### Algoritmo con estado interno
+### Algorithm with internal state
 
-Para persistir estado entre ticks (target, velocidad, datos acumulados):
+To persist state between ticks (target, velocity, accumulated data):
 
 ```elixir
 @impl true
 def compute_step(%{position: position, map: map} = state) do
-  target = Map.get(state, :target) || generar_target(map)
-  # ... lógica de movimiento
+  target = Map.get(state, :target) || generate_target(map)
+  # ... movement logic
   {new_position, Map.put(state, :target, new_target)}
 end
 ```
 
-### Algoritmo con comunicación
+### Algorithm with communication
 
-Para compartir información entre drones:
+To share information between drones:
 
 ```elixir
 @impl true
 def get_shared_data(state) do
-  %{type: :mi_tipo, dato: Map.get(state, :dato)}
+  %{type: :my_type, data: Map.get(state, :data)}
 end
 
 @impl true
-def handle_received_data(_sender, %{type: :mi_tipo, dato: dato}, state) do
-  # Procesar dato recibido
-  Map.put(state, :datos_recibidos, dato)
+def handle_received_data(_sender, %{type: :my_type, data: data}, state) do
+  # Process received data
+  Map.put(state, :received_data, data)
 end
 
 def handle_received_data(_sender, _data, state), do: state
 ```
 
-### Algoritmo con KnowledgeStore
+### Algorithm with KnowledgeStore
 
-Para compartir conocimiento posicional con decay y anti-eco:
+To share positional knowledge with decay and anti-echo:
 
 ```elixir
 alias Simulator.Algorithms.Helpers.KnowledgeStore
@@ -247,11 +248,11 @@ alias Simulator.Algorithms.Helpers.KnowledgeStore
 def get_shared_data(state) do
   visited = Map.get(state, :visited, [])
   received = Map.get(state, :received_visited, %{})
-  %{type: :mi_tipo, knowledge: KnowledgeStore.build_shareable(visited, received)}
+  %{type: :my_type, knowledge: KnowledgeStore.build_shareable(visited, received)}
 end
 
 @impl true
-def handle_received_data(_sender, %{type: :mi_tipo, knowledge: incoming}, state) do
+def handle_received_data(_sender, %{type: :my_type, knowledge: incoming}, state) do
   received = Map.get(state, :received_visited, %{})
   Map.put(state, :received_visited, KnowledgeStore.merge(received, incoming))
 end
@@ -269,23 +270,23 @@ def format_state(algo_state) do
 end
 ```
 
-## Utilidades Disponibles
+## Available Utilities
 
-Los helpers en `lib/simulator/algorithms/helpers/` proveen funcionalidades reutilizables:
+The helpers in `lib/simulator/algorithms/helpers/` provide reusable functionality:
 
-- **[Geometry](helpers/geometry.md)** — primitivas geométricas, detección de colisiones,
-  generación de puntos, grillas de celdas
-- **[KnowledgeStore](helpers/knowledge_store.md)** — gestión de conocimiento compartido
-  con decay, merge anti-eco, y exportación
+- **[Geometry](helpers/geometry.md)** — geometric primitives, collision detection,
+  point generation, cell grids
+- **[KnowledgeStore](helpers/knowledge_store.md)** — shared knowledge management
+  with decay, anti-echo merge, and export
 
-## Implementaciones
+## Implementations
 
-| Algoritmo | Comunicación | Estado interno | Documentación |
-|-----------|:------------:|:--------------:|:-------------:|
-| [Static](implementations/static.md) | No | No | Detalle |
-| [RandomWalk](implementations/random_walk.md) | No | No | Detalle |
-| [AimRandomWalk](implementations/aim_random_walk.md) | No | target | Detalle |
-| [HeatmapWalk](implementations/heatmap_walk.md) | KnowledgeStore | visited, target | Detalle |
-| [AntColony](implementations/ant_colony.md) | Grid feromonas | pheromone_grid, target | Detalle |
-| [ParticleSwarm](implementations/particle_swarm.md) | Evento objetivo | velocity, personal_best | Detalle |
-| [GreyWolf](implementations/grey_wolf.md) | Roles + objetivo | role, known_leaders, target | Detalle |
+| Algorithm | Communication | Internal state | Documentation |
+|-----------|:-------------:|:--------------:|:-------------:|
+| [Static](implementations/static.md) | No | None | Detail |
+| [RandomWalk](implementations/random_walk.md) | No | None | Detail |
+| [AimRandomWalk](implementations/aim_random_walk.md) | No | target | Detail |
+| [HeatmapWalk](implementations/heatmap_walk.md) | KnowledgeStore | visited, target | Detail |
+| [AntColony](implementations/ant_colony.md) | Pheromone grid | pheromone_grid, target | Detail |
+| [ParticleSwarm](implementations/particle_swarm.md) | Objective event | velocity, personal_best | Detail |
+| [GreyWolf](implementations/grey_wolf.md) | Roles + objective | role, known_leaders, target | Detail |

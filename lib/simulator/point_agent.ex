@@ -31,19 +31,21 @@ defmodule Simulator.PointAgent do
   # Public API -------------------------------------------------------
 
   @doc """
-  Starts a new agent with the given algorithm, map, and environment references.
+  Starts a new agent.
 
-  The `tracker` is the PositionTracker where the agent reports its position.
-  The `relay` is the CommunicationRelay where the agent broadcasts shared data.
+  Takes three arguments grouped by category:
+
+    - `config` — agent behavior parameters: `%{algorithm, map, swarm_seed}`.
+      `:swarm_seed` is optional; when set, the agent process seeds its
+      `:rand` state on init, making algorithm decisions reproducible
+      across runs that share the same `(swarm_seed, id)` pair.
+    - `env` — messaging targets: `%{tracker, relay}`. The PositionTracker
+      where the agent reports its position and the CommunicationRelay
+      where it broadcasts shared data.
+    - `id` — numeric drone identifier.
   """
-  def start_link(algo, map, tracker, relay, id) do
-    GenServer.start_link(__MODULE__, %{
-      algo: algo,
-      map: map,
-      tracker: tracker,
-      relay: relay,
-      id: id
-    })
+  def start_link(config, env, id) do
+    GenServer.start_link(__MODULE__, %{config: config, env: env, id: id})
   end
 
   @doc """
@@ -91,18 +93,21 @@ defmodule Simulator.PointAgent do
   # Callbacks --------------------------------------------------------
 
   @impl true
-  def init(config) do
-    algorithm = resolve_algorithm(config.algo)
-    map = resolve_map(config.map)
+  def init(%{config: config, env: env, id: id}) do
+    seed_rand(Map.get(config, :swarm_seed), id)
+
+    algorithm = resolve_algorithm(Map.fetch!(config, :algorithm))
+    map = resolve_map(Map.fetch!(config, :map))
 
     state = %{
-      id: config.id,
+      id: id,
       position: map.spawn_point,
       algorithm: algorithm,
       map: map,
       neighbors: %{},
-      tracker: config.tracker,
-      relay: config.relay
+      tracker: Map.fetch!(env, :tracker),
+      relay: Map.fetch!(env, :relay),
+      pending_received: []
     }
 
     schedule_tick()
@@ -143,13 +148,22 @@ defmodule Simulator.PointAgent do
 
   @impl true
   def handle_cast({:received_data, sender_pid, data}, state) do
-    new_state = Algorithm.receive_data(state.algorithm, sender_pid, data, state)
-    {:noreply, new_state}
+    # Buffer the message instead of applying it immediately. The tick
+    # handler drains the buffer in deterministic order (sorted by
+    # sender) before computing the next step, so two runs that share
+    # the same `(swarm_seed, id)` see the same input sequence even when
+    # the BEAM delivers casts in a different order.
+    new_pending = [{sender_pid, data} | state.pending_received]
+    {:noreply, %{state | pending_received: new_pending}}
   end
 
   @impl true
   def handle_info(:tick, state) do
-    {new_position, updated_state} = state.algorithm.compute_step(state)
+    state_with_messages = flush_pending(state)
+
+    {new_position, updated_state} =
+      state_with_messages.algorithm.compute_step(state_with_messages)
+
     new_state = %{updated_state | position: new_position}
 
     color = if map_size(new_state.neighbors) > 0, do: "neighbor", else: "alone"
@@ -173,7 +187,30 @@ defmodule Simulator.PointAgent do
 
   # Private ----------------------------------------------------------
 
-  @system_keys [:id, :position, :algorithm, :map, :neighbors, :tracker, :relay]
+  defp seed_rand(nil, _id), do: :ok
+
+  defp seed_rand(swarm_seed, id) when is_integer(swarm_seed) and is_integer(id) do
+    :rand.seed(:exsss, {swarm_seed, id, 0})
+    :ok
+  end
+
+  defp flush_pending(%{pending_received: []} = state), do: state
+
+  defp flush_pending(state) do
+    sorted =
+      state.pending_received
+      |> Enum.reverse()
+      |> Enum.sort_by(fn {sender, _data} -> sender end)
+
+    drained =
+      Enum.reduce(sorted, state, fn {sender, data}, acc ->
+        Algorithm.receive_data(acc.algorithm, sender, data, acc)
+      end)
+
+    %{drained | pending_received: []}
+  end
+
+  @system_keys [:id, :position, :algorithm, :map, :neighbors, :tracker, :relay, :pending_received]
 
   defp extract_algorithm_state(state) do
     algo_state = Map.drop(state, @system_keys)

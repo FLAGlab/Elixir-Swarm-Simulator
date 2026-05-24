@@ -1,15 +1,15 @@
 # Frontend
 
-**Directorio:** `assets/js/`
+**Directory:** `assets/js/`
 
-## Archivos
+## Files
 
-| Archivo | Descripción |
-|---------|-------------|
-| `app.js` | Entry point — importa Phoenix Socket, LiveView, topbar, y simulation canvas |
-| `simulation_canvas.js` | Conecta al SimulationChannel via WebSocket, renderiza agentes y estructuras en HTML Canvas |
+| File | Description |
+|------|-------------|
+| `app.js` | Entry point — imports Phoenix Socket, LiveView, topbar, and the simulation canvas |
+| `simulation_canvas.js` | Connects to the SimulationChannel via WebSocket, renders agents and structures on an HTML Canvas |
 
-## Arquitectura del Frontend
+## Frontend Architecture
 
 ```mermaid
 flowchart TD
@@ -18,14 +18,14 @@ flowchart TD
         SC["simulation_canvas.js"]
 
         subgraph Canvas["HTML Canvas"]
-            Structures["Structures\n(polígonos)"]
-            Overlay["Overlay\n(heatmap/feromonas)"]
-            Agents["Agents\n(círculos)"]
+            Structures["Structures\n(polygons)"]
+            Overlay["Overlay\n(heatmap/pheromones)"]
+            Agents["Agents\n(circles)"]
         end
 
         subgraph UI["UI Elements"]
-            Grid["Drone Grid\n(4 columnas)"]
-            Detail["Detail Panel\n(estado dron)"]
+            Grid["Drone Grid\n(4 columns)"]
+            Detail["Detail Panel\n(drone state)"]
         end
     end
 
@@ -41,104 +41,105 @@ flowchart TD
     Detail -- "mousedown (disconnect/reconnect)" --> WS
 ```
 
-## Canvas de Simulación
+## Simulation Canvas
 
-### Renderizado de Estructuras
+### Structure Rendering
 
-Las estructuras del mapa (obstáculos) se dibujan como polígonos:
-- **Fill:** gris con opacidad 0.3
-- **Stroke:** gris con opacidad 0.8
+Map structures (obstacles) are drawn as polygons:
+- **Fill:** gray with opacity 0.3
+- **Stroke:** gray with opacity 0.8
 
-### Renderizado de Agentes
+### Agent Rendering
 
-Cada agente se dibuja como dos círculos concéntricos:
-- **Círculo externo:** radio 20px, solo stroke
-- **Círculo interno:** radio 5px, filled
+Each agent is drawn as two concentric circles:
+- **Outer circle:** radius 20px, stroke only
+- **Inner circle:** radius 5px, filled
 
-### Renderizado de Objetivo
+### Objective Rendering
 
-Cuando la simulación tiene un objetivo, se dibuja como un marcador rojo:
-- **Círculo externo:** radio 15px, solo stroke, color `#ef4444`
-- **Círculo interno:** radio 6px, filled, color `#ef4444`
+When the simulation has an objective, it is drawn as a red marker:
+- **Outer circle:** radius 15px, stroke only, color `#ef4444`
+- **Inner circle:** radius 6px, filled, color `#ef4444`
 
-Se dibuja después de structures/overlay y antes de los agentes. La posición se
-actualiza en cada tick a partir del campo `objective` del evento `"positions"`.
+It is drawn after structures/overlay and before the agents. The position is updated
+on every tick from the `objective` field of the `"positions"` event.
 
-### Colores de Agentes
+### Agent Colors
 
-| Estado | Color | Hex |
-|--------|-------|-----|
-| Solo (sin vecinos) | Violeta | `#6366f1` |
-| Con vecinos | Verde | `#22c55e` |
-| Seleccionado | Ámbar | `#f59e0b` |
-| Desconectado | Gris | `#9ca3af` |
+| State | Color | Hex |
+|-------|-------|-----|
+| Alone (no neighbors) | Violet | `#6366f1` |
+| With neighbors | Green | `#22c55e` |
+| Selected | Amber | `#f59e0b` |
+| Disconnected | Gray | `#9ca3af` |
 
-Los drones desconectados se muestran con opacidad reducida (0.4) tanto en el canvas como
-en el drone grid, a menos que estén seleccionados.
+Disconnected drones are shown with reduced opacity (0.4) on both the canvas and
+the drone grid, unless they are selected.
 
 ### Overlays
 
-Cuando un dron con overlay está seleccionado, se dibuja información adicional sobre el canvas.
-El overlay viene pre-computado del servidor como parte de `format_state/1` del algoritmo, con
-la estructura `%{cells: [%{x, y, intensity}], color: "r, g, b"}`. El frontend renderiza
-genéricamente sin conocer qué algoritmo lo generó:
+When a drone with an overlay is selected, additional information is drawn on top
+of the canvas. The overlay comes pre-computed from the server as part of the
+algorithm's `format_state/1`, with the structure
+`%{cells: [%{x, y, intensity}], color: "r, g, b"}`. The frontend renders it
+generically without knowing which algorithm produced it:
 
-- Cada celda se dibuja como un rectángulo semi-transparente con opacidad proporcional a `intensity`
-- El color es definido por el algoritmo (e.g., rojo para heatmap, azul para feromonas)
+- Each cell is drawn as a semi-transparent rectangle with opacity proportional to `intensity`
+- The color is defined by the algorithm (e.g., red for heatmap, blue for pheromones)
 
 ## Drone Grid
 
-Debajo del canvas se muestra un grid de 4 columnas con los IDs de los drones:
-- Cada dron tiene un dot con código de color (mismo esquema que el canvas)
-- Click en un dron togglea la selección (envía `select_drone`/`deselect_drone` al channel)
-- Los drones desconectados se muestran en gris con opacidad reducida
+Below the canvas, a 4-column grid shows the drone IDs:
+- Each drone has a color-coded dot (same scheme as the canvas)
+- Clicking on a drone toggles selection (sends `select_drone`/`deselect_drone` to the channel)
+- Disconnected drones are shown in gray with reduced opacity
 
-## Panel de Detalle
+## Detail Panel
 
-Cuando un dron está seleccionado, se muestra un panel con:
-- Estado de conexión (badge "Connected" verde o "Disconnected" rojo)
-- Posición (`x`, `y`)
-- Cantidad de vecinos
-- Campos del algoritmo (renderizados genéricamente desde `detail_fields` de `format_state/1`)
-- Botón de toggle: "Disconnect" (rojo) si conectado, "Reconnect" (verde) si desconectado
+When a drone is selected, a panel is shown with:
+- Connection state (green "Connected" or red "Disconnected" badge)
+- Position (`x`, `y`)
+- Neighbor count
+- Algorithm fields (rendered generically from `detail_fields` of `format_state/1`)
+- Toggle button: "Disconnect" (red) if connected, "Reconnect" (green) if disconnected
 
-Los campos del algoritmo se renderizan según su tipo:
+Algorithm fields are rendered according to their type:
 
-| Tipo | Renderizado |
-|------|-------------|
-| `"text"` | Valor como string plano |
+| Type | Rendering |
+|------|-----------|
+| `"text"` | Value as a plain string |
 | `"position"` | `(x, y)` |
-| `"badge"` | Badge estilizado |
+| `"badge"` | Styled badge |
 | `"boolean"` | "Yes" / "No" |
 
-El frontend no tiene lógica específica por algoritmo — cada algoritmo define qué exponer
-en su `format_state/1` y el frontend lo renderiza genéricamente.
+The frontend has no algorithm-specific logic — each algorithm defines what to
+expose in its `format_state/1` and the frontend renders it generically.
 
-## Ciclo de Renderizado
+## Render Cycle
 
 ```
 Channel push "positions"
     │
     ▼
-JS recibe evento
+JS receives event
     │
     ├── Clear canvas
-    ├── Draw structures (polígonos grises)
-    ├── Draw overlay (si hay dron seleccionado con overlay data)
-    ├── Draw objective (círculo rojo, si hay objetivo)
-    ├── Draw agents (círculos concéntricos por agente)
-    │     └── Drones desconectados: color gris, opacidad 0.4
+    ├── Draw structures (gray polygons)
+    ├── Draw overlay (if a drone with overlay data is selected)
+    ├── Draw objective (red circle, if there is an objective)
+    ├── Draw agents (concentric circles per agent)
+    │     └── Disconnected drones: gray color, opacity 0.4
     └── Update drone grid + detail panel
-          └── Drones desconectados: gris, opacidad reducida, botón "Reconnect"
+          └── Disconnected drones: gray, reduced opacity, "Reconnect" button
 ```
 
-El renderizado ocurre a ~30fps, sincronizado con el tick del channel.
+Rendering happens at ~30fps, synchronized with the channel tick.
 
-## Evento simulation_complete
+## simulation_complete event
 
-Cuando el backend envía `"simulation_complete"`, el frontend redirige automáticamente
-a la pantalla de estadísticas (`/execution_runs/:id`) después de un delay de 1.5 segundos,
-permitiendo al usuario ver brevemente el momento de la detección.
+When the backend sends `"simulation_complete"`, the frontend automatically redirects
+to the stats screen (`/execution_runs/:id`) after a 1.5-second delay, letting the
+user briefly see the moment of detection.
 
 ```
 Channel push "simulation_complete" {execution_run_id}

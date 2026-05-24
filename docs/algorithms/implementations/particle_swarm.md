@@ -1,95 +1,96 @@
 # ParticleSwarm (PSO)
 
-**Módulo:** `Simulator.Algorithms.ParticleSwarm`
-**Archivo:** `lib/simulator/algorithms/impl/particle_swarm.ex`
-**Registro:** `"particle_swarm"`
+**Module:** `Simulator.Algorithms.ParticleSwarm`
+**File:** `lib/simulator/algorithms/impl/particle_swarm.ex`
+**Registry:** `"particle_swarm"`
 
-## Descripción
+## Description
 
-Particle Swarm Optimization para búsqueda ciega en espacio 2D continuo. Diseñado para
-encontrar un objetivo estático que no emite señal de proximidad — las partículas deben
-alcanzar físicamente el objetivo para detectarlo.
+Particle Swarm Optimization for blind search in continuous 2D space. Designed to
+find a static objective that emits no proximity signal — particles must physically
+reach the objective to detect it.
 
-Opera en dos modos implícitos determinados por si se ha encontrado el objetivo o no.
+It operates in two implicit modes determined by whether the objective has been found
+or not.
 
-## Constantes
+## Constants
 
-| Constante | Valor | Descripción |
+| Constant | Value | Description |
 |-----------|-------|-------------|
-| `@max_speed` | 8.0 | Velocidad máxima en píxeles por tick |
-| `@inertia` | 0.6 | Factor de inercia (peso de la velocidad anterior) |
-| `@cognitive_weight` | 1.5 | Peso de atracción hacia personal best |
-| `@social_weight` | 1.5 | Peso de atracción hacia global best (objetivo) |
-| `@repulsion_radius` | 80.0 | Radio de repulsión entre partículas (exploración) |
-| `@repulsion_strength` | 3.0 | Fuerza de repulsión entre partículas |
-| `@wander_strength` | 4.0 | Magnitud del componente aleatorio en exploración |
+| `@max_speed` | 8.0 | Maximum speed in pixels per tick |
+| `@inertia` | 0.6 | Inertia factor (weight of the previous velocity) |
+| `@cognitive_weight` | 1.5 | Attraction weight toward personal best |
+| `@social_weight` | 1.5 | Attraction weight toward global best (objective) |
+| `@repulsion_radius` | 80.0 | Repulsion radius between particles (exploration) |
+| `@repulsion_strength` | 3.0 | Repulsion strength between particles |
+| `@wander_strength` | 4.0 | Magnitude of the random component during exploration |
 
-## Comportamiento
+## Behavior
 
-### Modo Exploración (`objective_found` es `nil`)
+### Exploration mode (`objective_found` is `nil`)
 
-Las partículas se dispersan para maximizar cobertura del espacio:
+Particles spread out to maximize coverage of the space:
 
-**Velocidad = inercia + wander + repulsión**
+**Velocity = inertia + wander + repulsion**
 
-1. **Inercia:** `velocidad_anterior × @inertia`
-2. **Wander:** Vector aleatorio con magnitud `@wander_strength`
-3. **Repulsión:** Fuerza inversamente proporcional a la distancia de cada vecino
-   dentro de `@repulsion_radius`. Empuja a las partículas lejos unas de otras.
+1. **Inertia:** `previous_velocity × @inertia`
+2. **Wander:** Random vector with magnitude `@wander_strength`
+3. **Repulsion:** Force inversely proportional to the distance from each neighbor
+   within `@repulsion_radius`. Pushes particles away from each other.
 
-**Personal best:** Se actualiza cuando la posición actual está más lejos de los vecinos
-que el personal best actual — incentiva explorar zonas menos cubiertas.
+**Personal best:** Updated when the current position is farther from neighbors than
+the current personal best — this rewards exploring less-covered zones.
 
-### Modo Convergencia (`objective_found` es `%{x, y}`)
+### Convergence mode (`objective_found` is `%{x, y}`)
 
-Ecuaciones clásicas de PSO:
+Classic PSO equations:
 
-**Velocidad = inercia + cognitivo + social**
+**Velocity = inertia + cognitive + social**
 
-1. **Inercia:** `velocidad_anterior × @inertia`
-2. **Cognitivo:** `@cognitive_weight × r1 × dirección(posición → personal_best)`
-3. **Social:** `@social_weight × r2 × dirección(posición → objetivo)`
+1. **Inertia:** `previous_velocity × @inertia`
+2. **Cognitive:** `@cognitive_weight × r1 × direction(position → personal_best)`
+3. **Social:** `@social_weight × r2 × direction(position → objective)`
 
-Donde `r1` y `r2` son valores random uniformes en `[0, 1)`.
+Where `r1` and `r2` are uniform random values in `[0, 1)`.
 
-### Manejo de colisiones
+### Collision handling
 
-Si el path al candidato colisiona con un obstáculo, la velocidad se invierte y reduce
-a la mitad (`bounce`): `velocity = -velocity × 0.5`. La posición no cambia.
+If the path to the candidate collides with an obstacle, the velocity is inverted and
+halved (`bounce`): `velocity = -velocity × 0.5`. The position does not change.
 
-### Velocidad máxima
+### Maximum speed
 
-La velocidad se clampea a `@max_speed` normalizando el vector si la magnitud excede el límite.
+The velocity is clamped to `@max_speed` by normalizing the vector when its magnitude
+exceeds the limit.
 
-### Comunicación
-- **Broadcast:** Si encontró el objetivo, comparte `%{type: :pso, objective: %{x, y}}`.
-  Si no, comparte `%{}` (nada).
-- **Recepción:** Si recibe un objetivo y aún no tiene uno, lo almacena en `:objective_found`.
-  Ignora si ya tiene uno (primera detección gana).
-- **Propagación:** La información del objetivo se propaga transitivamente a medida que
-  los drones se encuentran.
+### Communication
+- **Broadcast:** If it found the objective, shares `%{type: :pso, objective: %{x, y}}`.
+  Otherwise, shares `%{}` (nothing).
+- **Reception:** If it receives an objective and does not yet have one, stores it in
+  `:objective_found`. Ignores it if it already has one (first detection wins).
+- **Propagation:** The objective information propagates transitively as drones meet.
 
-## Callbacks implementados
+## Implemented callbacks
 
-| Callback | Implementado |
-|----------|:------------:|
-| `compute_step/1` | Si |
-| `get_shared_data/1` | Si |
-| `handle_received_data/3` | Si |
-| `format_state/1` | Si |
+| Callback | Implemented |
+|----------|:-----------:|
+| `compute_step/1` | Yes |
+| `get_shared_data/1` | Yes |
+| `handle_received_data/3` | Yes |
+| `format_state/1` | Yes |
 
-## Estado interno
+## Internal state
 
-| Key | Tipo | Descripción |
+| Key | Type | Description |
 |-----|------|-------------|
-| `:velocity` | `%{vx, vy}` | Velocidad actual de la partícula |
-| `:personal_best` | `%{x, y}` | Mejor posición encontrada (más alejada de vecinos) |
-| `:objective_found` | `%{x, y} \| nil` | Ubicación del objetivo, `nil` en exploración |
+| `:velocity` | `%{vx, vy}` | Current particle velocity |
+| `:personal_best` | `%{x, y}` | Best position found (farthest from neighbors) |
+| `:objective_found` | `%{x, y} \| nil` | Objective location, `nil` during exploration |
 
 ## format_state
 
-Elimina `:velocity` y `:personal_best` del estado expuesto.
+Removes `:velocity` and `:personal_best` from the exposed state.
 
-## Dependencias
+## Dependencies
 
 - `Geometry` — clamp, euclidean_distance, path_collides?

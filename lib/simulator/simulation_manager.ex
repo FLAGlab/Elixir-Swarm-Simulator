@@ -29,10 +29,22 @@ defmodule Simulator.SimulationManager do
 
     initial_state = %{
       interval: interval,
-      executions: %{}
+      executions: %{},
+      completions: %{}
     }
 
     GenServer.start_link(__MODULE__, initial_state, name: __MODULE__)
+  end
+
+  @doc """
+  Starts an execution for the given simulation.
+
+  Returns `:ok` if the execution started, `:already_running` if one is
+  already running for that simulation ID, or `{:error, reason}` if the
+  executor failed to start.
+  """
+  def start_execution(%Simulator.Simulations.Simulation{} = simulation) do
+    GenServer.call(__MODULE__, {:start_execution, %{simulation: simulation}})
   end
 
   @doc """
@@ -66,7 +78,9 @@ defmodule Simulator.SimulationManager do
 
         with {:ok, pid} <- SimulationExecutor.start_link(%{simulation: simulation}) do
           new_executions = Map.put(state.executions, simulation.id, pid)
-          {:reply, :ok, %{state | executions: new_executions}}
+          new_completions = Map.delete(state.completions, simulation.id)
+
+          {:reply, :ok, %{state | executions: new_executions, completions: new_completions}}
         else
           {:error, reason} ->
             Logger.error("Failed to start simulation executor: #{reason}")
@@ -81,8 +95,10 @@ defmodule Simulator.SimulationManager do
       {:ok, pid} ->
         SimulationExecutor.stop(pid)
         new_executions = Map.delete(state.executions, simulation_id)
+        new_completions = Map.delete(state.completions, simulation_id)
         Logger.info("SimulationManager: stopped execution #{simulation_id}")
-        {:reply, :ok, %{state | executions: new_executions}}
+
+        {:reply, :ok, %{state | executions: new_executions, completions: new_completions}}
 
       :error ->
         {:reply, :not_found, state}
@@ -97,8 +113,14 @@ defmodule Simulator.SimulationManager do
         {:reply, data, state}
 
       :error ->
-        Logger.info("SimulationManager: no executor found for simulation: #{simulation.name}")
-        {:reply, :not_found, state}
+        case Map.fetch(state.completions, simulation.id) do
+          {:ok, completion} ->
+            {:reply, Map.put(completion, :completed, true), state}
+
+          :error ->
+            Logger.info("SimulationManager: no executor found for simulation: #{simulation.name}")
+            {:reply, :not_found, state}
+        end
     end
   end
 
@@ -139,28 +161,31 @@ defmodule Simulator.SimulationManager do
   def handle_cast({:execution_complete, simulation_id, stats}, state) do
     Logger.info("SimulationManager: execution complete for simulation #{simulation_id}")
 
-    case Simulations.create_execution_run(stats) do
-      {:ok, run} ->
-        Phoenix.PubSub.broadcast(
-          Simulator.PubSub,
-          "simulation:#{simulation_id}",
-          {:simulation_complete, %{execution_run_id: run.id, stats: stats}}
-        )
+    new_completions =
+      case Simulations.create_execution_run(stats) do
+        {:ok, run} ->
+          Map.put(state.completions, simulation_id, %{
+            execution_run_id: run.id,
+            stats: stats
+          })
 
-      {:error, changeset} ->
-        Logger.error(
-          "SimulationManager: failed to save execution run: #{inspect(changeset.errors)}"
-        )
-    end
+        {:error, changeset} ->
+          Logger.error(
+            "SimulationManager: failed to save execution run: #{inspect(changeset.errors)}"
+          )
+
+          state.completions
+      end
 
     case Map.fetch(state.executions, simulation_id) do
       {:ok, pid} ->
         SimulationExecutor.stop(pid)
         new_executions = Map.delete(state.executions, simulation_id)
-        {:noreply, %{state | executions: new_executions}}
+
+        {:noreply, %{state | executions: new_executions, completions: new_completions}}
 
       :error ->
-        {:noreply, state}
+        {:noreply, %{state | completions: new_completions}}
     end
   end
 

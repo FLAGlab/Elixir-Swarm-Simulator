@@ -18,7 +18,8 @@ defmodule Simulator.Application do
       # Start to serve requests, typically the last entry
       SimulatorWeb.Endpoint,
       {Simulator.SimulationManager, interval: 300},
-      {Registry, keys: :unique, name: Simulator.Registry}
+      {Registry, keys: :unique, name: Simulator.Registry},
+      {Task.Supervisor, name: Simulator.TaskSupervisor}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

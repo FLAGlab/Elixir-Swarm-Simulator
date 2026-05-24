@@ -23,6 +23,8 @@ defmodule Simulator.Simulations.ExecutionRun do
     field :finder_drone_id, :integer
     field :objective_position, :string
     field :status, :string
+    field :objective_seed, :integer
+    field :swarm_seed, :integer
 
     timestamps(type: :utc_datetime)
   end
@@ -40,9 +42,11 @@ defmodule Simulator.Simulations.ExecutionRun do
       :ticks,
       :finder_drone_id,
       :objective_position,
-      :status
+      :status,
+      :objective_seed,
+      :swarm_seed
     ])
-    |> validate_required([:simulation_id, :algorithm, :status])
+    |> validate_required([:simulation_id, :algorithm, :status, :objective_seed, :swarm_seed])
     |> foreign_key_constraint(:simulation_id)
   end
 end

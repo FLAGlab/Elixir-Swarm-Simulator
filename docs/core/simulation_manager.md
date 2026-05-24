@@ -1,16 +1,16 @@
 # SimulationManager
 
-**Módulo:** `Simulator.SimulationManager`
-**Archivo:** `lib/simulator/simulation_manager.ex`
+**Module:** `Simulator.SimulationManager`
+**File:** `lib/simulator/simulation_manager.ex`
 
-## Descripción
+## Description
 
-El Manager es un **componente de nivel aplicación**, no parte de la simulación en sí.
-Actúa como bridge centralizado entre el mundo exterior (controllers, channels) y los
-Executors. **Ningún componente externo debe comunicarse directamente con un Executor** —
-toda interacción debe pasar por el Manager.
+The Manager is an **application-level component**, not part of the simulation itself.
+It acts as a centralized bridge between the outside world (controllers, channels)
+and the Executors. **No external component should communicate with an Executor
+directly** — every interaction must go through the Manager.
 
-## Diagrama de Acceso
+## Access Diagram
 
 ```mermaid
 flowchart LR
@@ -21,7 +21,7 @@ flowchart LR
     Manager --> E2["Executor\n(sim 2)"]
     Manager --> EN["Executor\n(sim N)"]
 
-    Channel -. "PROHIBIDO" .-> E1
+    Channel -. "FORBIDDEN" .-> E1
 
     style Channel fill:#e0e7ff
     style Controller fill:#e0e7ff
@@ -40,34 +40,34 @@ sequenceDiagram
     participant Ex as Executor
 
     Ch->>Mg: start_execution(simulation)
-    alt Ya corriendo
+    alt Already running
         Mg-->>Ch: {:error, :already_running}
-    else Nueva
+    else New
         Mg->>Ex: start_link(simulation)
         Ex-->>Mg: {:ok, pid}
         Mg->>Mg: Monitor.monitor(pid)
         Mg-->>Ch: {:ok, pid}
     end
 
-    Note over Ch,Ex: ... operación normal ...
+    Note over Ch,Ex: ... normal operation ...
 
-    alt Objetivo encontrado
+    alt Objective found
         Ex->>Mg: cast({:execution_complete, sim_id, stats})
-        Mg->>Mg: Guarda ExecutionRun en DB
+        Mg->>Mg: Save ExecutionRun in DB
         Mg->>Mg: Broadcast PubSub {:simulation_complete}
         Mg->>Ex: stop(pid)
-        Mg->>Mg: Limpia executions map
-    else Detención manual
+        Mg->>Mg: Cleans up executions map
+    else Manual stop
         Ch->>Mg: stop_execution(sim_id)
         Mg->>Ex: stop(pid)
-        Mg->>Mg: Limpia executions map
-    else Terminación inesperada
+        Mg->>Mg: Cleans up executions map
+    else Unexpected termination
         Ex-->>Mg: {:DOWN, ref, ...}
-        Mg->>Mg: Limpia executions map
+        Mg->>Mg: Cleans up executions map
     end
 ```
 
-## Estado
+## State
 
 ```elixir
 %{
@@ -75,54 +75,54 @@ sequenceDiagram
 }
 ```
 
-## Responsabilidades
+## Responsibilities
 
-| Responsabilidad | Descripción |
+| Responsibility | Description |
 |----------------|-------------|
-| **Tracking de ejecuciones** | Mantiene mapa `simulation.id => executor_pid` |
-| **Prevención de duplicados** | Retorna `:already_running` si la simulación ya está en ejecución |
-| **Inicio de ejecuciones** | `start_execution/1` crea un SimulationExecutor y lo monitorea |
-| **Detención de ejecuciones** | `stop_execution/1` termina el Executor y libera recursos |
-| **Completitud de ejecución** | `handle_cast({:execution_complete, ...})` guarda `ExecutionRun` en DB, broadcast via PubSub, y detiene el Executor |
-| **Delegación de queries** | Delega position queries, agent detail queries, toggle de conexión, y comandos al Executor apropiado |
-| **Monitoreo** | `handle_info({:DOWN, ...})` limpia ejecuciones cuando un Executor termina inesperadamente |
+| **Execution tracking** | Maintains the `simulation.id => executor_pid` map |
+| **Duplicate prevention** | Returns `:already_running` if the simulation is already executing |
+| **Starting executions** | `start_execution/1` creates a SimulationExecutor and monitors it |
+| **Stopping executions** | `stop_execution/1` terminates the Executor and frees resources |
+| **Execution completion** | `handle_cast({:execution_complete, ...})` saves an `ExecutionRun` in the DB, broadcasts via PubSub, and stops the Executor |
+| **Query delegation** | Delegates position queries, agent detail queries, connection toggling, and commands to the appropriate Executor |
+| **Monitoring** | `handle_info({:DOWN, ...})` cleans up executions when an Executor terminates unexpectedly |
 
-## API Pública
+## Public API
 
-| Función | Descripción |
-|---------|-------------|
-| `start_execution(simulation)` | Inicia una nueva ejecución, retorna `{:ok, pid}` o `{:error, :already_running}` |
-| `stop_execution(simulation_id)` | Detiene una ejecución activa |
-| `get_positions(simulation)` | Obtiene posiciones de todos los agentes de una simulación |
-| `get_agent_detail(simulation, agent_id)` | Obtiene el estado detallado de un agente |
-| `toggle_drone_connection(simulation, agent_id, connected)` | Desconecta/reconecta un dron del entorno |
+| Function | Description |
+|----------|-------------|
+| `start_execution(simulation)` | Starts a new execution; returns `{:ok, pid}` or `{:error, :already_running}` |
+| `stop_execution(simulation_id)` | Stops an active execution |
+| `get_positions(simulation)` | Gets the positions of all agents of a simulation |
+| `get_agent_detail(simulation, agent_id)` | Gets the detailed state of an agent |
+| `toggle_drone_connection(simulation, agent_id, connected)` | Disconnects/reconnects a drone from the environment |
 
 ## Lifecycle
 
 ```
-Channel.join ──► start_execution ──► crea Executor + Monitor
+Channel.join ──► start_execution ──► creates Executor + Monitor
                                           │
-              execution_complete ◄─────────┘  (objetivo encontrado)
+              execution_complete ◄─────────┘  (objective found)
                        │
-                       ├── Guarda ExecutionRun en DB
-                       ├── Broadcast PubSub {:simulation_complete}
-                       └── stop(executor) + limpia executions map
+                       ├── Saves ExecutionRun in DB
+                       ├── Broadcasts PubSub {:simulation_complete}
+                       └── stop(executor) + cleans up executions map
 
                         stop_execution ◄───┘  (manual)
-                               o
-                        {:DOWN, ...}  ◄───┘  (inesperado)
+                               or
+                        {:DOWN, ...}  ◄───┘  (unexpected)
                                │
-                        limpia executions map
+                        cleans up executions map
 ```
 
-## Patrón de acceso
+## Access pattern
 
 ```
 SimulationChannel ──► SimulationManager ──► SimulationExecutor  (positions, detail, toggle_connection)
 SimulationController ──► SimulationManager ──► SimulationExecutor
 ```
 
-Nunca:
+Never:
 ```
-SimulationChannel ──✗──► SimulationExecutor  (prohibido)
+SimulationChannel ──✗──► SimulationExecutor  (forbidden)
 ```

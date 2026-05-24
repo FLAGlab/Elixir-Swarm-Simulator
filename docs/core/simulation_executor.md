@@ -1,28 +1,28 @@
 # SimulationExecutor
 
-**Módulo:** `Simulator.SimulationExecutor`
-**Archivo:** `lib/simulator/simulation_executor.ex`
+**Module:** `Simulator.SimulationExecutor`
+**File:** `lib/simulator/simulation_executor.ex`
 
-## Descripción
+## Description
 
-El Executor es el **simulador del entorno**, no un controlador de drones. En una simulación
-de enjambre, todas las decisiones deben ocurrir dentro de cada dron (PointAgent) — el trabajo
-del Executor es simular el mundo físico que los rodea.
+The Executor is the **environment simulator**, not a drone controller. In a swarm
+simulation, all decisions must happen inside each drone (PointAgent) — the
+Executor's job is to simulate the physical world around them.
 
-## Árbol de Procesos
+## Process Tree
 
-Al inicializarse, el Executor crea los módulos de entorno y luego spawna los agentes:
+On initialization, the Executor creates the environment modules and then spawns the agents:
 
 ```
 SimulationExecutor
-  |-- PositionTracker      (almacena posiciones broadcast por agentes)
-  |-- ProximityDetector    (detecta cuando drones entran/salen del rango)
-  |-- CommunicationRelay   (entrega datos compartidos entre drones vecinos)
-  |-- ObjectiveServer      (opcional: gestiona el objetivo y detecta cuando un dron lo encuentra)
-  |-- PointAgent x N       (procesos de drones autónomos)
+  |-- PositionTracker      (stores positions broadcast by agents)
+  |-- ProximityDetector    (detects when drones enter/leave range)
+  |-- CommunicationRelay   (delivers shared data between neighboring drones)
+  |-- ObjectiveServer      (optional: manages the objective and detects when a drone finds it)
+  |-- PointAgent x N       (autonomous drone processes)
 ```
 
-## Diagrama de Procesos
+## Process Diagram
 
 ```mermaid
 flowchart TD
@@ -31,11 +31,11 @@ flowchart TD
     Exec --> PT["PositionTracker"]
     Exec --> PD["ProximityDetector"]
     Exec --> CR["CommunicationRelay"]
-    Exec --> OS["ObjectiveServer\n(opcional)"]
+    Exec --> OS["ObjectiveServer\n(optional)"]
 
-    PD -- "lee posiciones" --> PT
-    CR -- "consulta vecinos" --> PD
-    OS -- "lee posiciones" --> PT
+    PD -- "reads positions" --> PT
+    CR -- "queries neighbors" --> PD
+    OS -- "reads positions" --> PT
     OS -- "objective_found" --> Exec
 
     Exec --> A1["PointAgent 1"]
@@ -49,66 +49,66 @@ flowchart TD
     PD -- "drone_entered / drone_left" --> A1 & A2 & A3 & AN
 ```
 
-## Ciclo de Vida
+## Lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Iniciando: start_link(simulation)
-    Iniciando --> Operativo: init completo\n(environment + agents spawned)
-    Operativo --> Operativo: get_positions / get_agent_detail / toggle_drone_connection
-    Operativo --> Completado: objective_found\n(notifica Manager)
-    Operativo --> Terminando: stop() / terminate()
-    Completado --> Terminando: Manager detiene Executor
-    Terminando --> [*]: agents + environment detenidos
+    [*] --> Starting: start_link(simulation)
+    Starting --> Operational: init complete\n(environment + agents spawned)
+    Operational --> Operational: get_positions / get_agent_detail / toggle_drone_connection
+    Operational --> Completed: objective_found\n(notifies Manager)
+    Operational --> Terminating: stop() / terminate()
+    Completed --> Terminating: Manager stops Executor
+    Terminating --> [*]: agents + environment stopped
 ```
 
-## Estado
+## State
 
 ```elixir
 %{
-  simulation: %Simulation{},     # Record de la simulación (de la DB)
-  agents: %{id => %{pid: pid(), disconnected: boolean()}},  # Mapa de ID → {PID, estado de conexión}
-  tracker: pid(),                # PID del PositionTracker
-  proximity: pid(),              # PID del ProximityDetector
-  relay: pid(),                  # PID del CommunicationRelay
-  objective_server: pid() | nil, # PID del ObjectiveServer (nil si no hay objetivo)
-  start_time: integer(),         # Timestamp de inicio (monotonic ms)
-  tick_count: integer()          # Contador de ticks (incrementado en cada get_positions)
+  simulation: %Simulation{},     # Simulation record (from the DB)
+  agents: %{id => %{pid: pid(), disconnected: boolean()}},  # Map of ID → {PID, connection state}
+  tracker: pid(),                # PositionTracker PID
+  proximity: pid(),              # ProximityDetector PID
+  relay: pid(),                  # CommunicationRelay PID
+  objective_server: pid() | nil, # ObjectiveServer PID (nil if there is no objective)
+  start_time: integer(),         # Start timestamp (monotonic ms)
+  tick_count: integer()          # Tick counter (incremented on every get_positions)
 }
 ```
 
-## Responsabilidades
+## Responsibilities
 
-| Responsabilidad | Descripción |
+| Responsibility | Description |
 |----------------|-------------|
-| **Spawn agents** | Crea N procesos `PointAgent` (N = `simulation.swarm`), cada uno con su ID |
-| **Orquestar environment modules** | Inicia y cablea PositionTracker, ProximityDetector, CommunicationRelay, y ObjectiveServer (si hay objetivo) |
-| **Agregar posiciones** | `get_positions/1` lee del PositionTracker e incluye posición del objetivo (si existe) |
-| **Query agent detail** | `get_agent_detail/2` obtiene el estado detallado de un agente por ID |
-| **Simular periféricos** | Puede enviar warnings de colisión, alertas de proximidad, o datos de sensores |
-| **Gestionar objetivos** | Delega al ObjectiveServer. Cuando recibe `{:objective_found, drone_id, position}`, notifica a todos los drones via `receive_shared_data` y cast `{:execution_complete, stats}` al Manager |
-| **Shutdown de drones** | Puede terminar agentes específicos para simular fallas de hardware |
-| **Toggle conexión de drones** | `toggle_drone_connection/3` desconecta/reconecta drones bloqueando sus comunicaciones en PositionTracker y CommunicationRelay. El dron sigue ejecutando su algoritmo sin enterarse |
+| **Spawn agents** | Creates N `PointAgent` processes (N = `simulation.swarm`), each with its ID |
+| **Orchestrate environment modules** | Starts and wires up PositionTracker, ProximityDetector, CommunicationRelay, and ObjectiveServer (if there is an objective) |
+| **Aggregate positions** | `get_positions/1` reads from the PositionTracker and includes the objective's position (if any) |
+| **Query agent detail** | `get_agent_detail/2` retrieves an agent's detailed state by ID |
+| **Simulate peripherals** | Can send collision warnings, proximity alerts, or sensor data |
+| **Manage objectives** | Delegates to the ObjectiveServer. When it receives `{:objective_found, drone_id, position}`, it notifies all drones via `receive_shared_data` and casts `{:execution_complete, stats}` to the Manager |
+| **Drone shutdown** | Can terminate specific agents to simulate hardware failure |
+| **Toggle drone connection** | `toggle_drone_connection/3` disconnects/reconnects drones by blocking their communications in PositionTracker and CommunicationRelay. The drone keeps running its algorithm without noticing |
 
-## API Pública
+## Public API
 
-| Función | Descripción |
-|---------|-------------|
-| `start_link(simulation)` | Inicia el Executor con una simulación |
-| `get_positions(pid)` | Retorna todas las posiciones de los agentes |
-| `get_agent_detail(pid, agent_id)` | Retorna el estado detallado de un agente |
-| `toggle_drone_connection(pid, agent_id, connected)` | Desconecta/reconecta un dron del entorno (call) |
-| `stop(pid)` | Detiene el Executor y todos sus procesos hijos |
+| Function | Description |
+|----------|-------------|
+| `start_link(simulation)` | Starts the Executor with a simulation |
+| `get_positions(pid)` | Returns all agent positions |
+| `get_agent_detail(pid, agent_id)` | Returns an agent's detailed state |
+| `toggle_drone_connection(pid, agent_id, connected)` | Disconnects/reconnects a drone from the environment (call) |
+| `stop(pid)` | Stops the Executor and all its child processes |
 
-## Ciclo de Vida
+## Lifecycle
 
-1. **Inicio**: `SimulationManager.start_execution/1` crea el Executor
-2. **Operación**: Los agentes operan independientemente, el Executor responde queries y gestiona desconexiones de drones
-3. **Completitud**: Si el ObjectiveServer detecta un dron en rango, envía `{:objective_found, ...}` al Executor. El Executor notifica a todos los drones, computa stats, y cast `{:execution_complete, stats}` al Manager
-4. **Terminación**: `terminate/2` detiene todos los agentes, environment modules y ObjectiveServer
-5. **Registro**: Registrado por `simulation.name` en el Registry (uno por tipo de simulación)
+1. **Start**: `SimulationManager.start_execution/1` creates the Executor
+2. **Operation**: Agents operate independently; the Executor responds to queries and manages drone disconnections
+3. **Completion**: If the ObjectiveServer detects a drone within range, it sends `{:objective_found, ...}` to the Executor. The Executor notifies all drones, computes stats, and casts `{:execution_complete, stats}` to the Manager
+4. **Termination**: `terminate/2` stops all agents, environment modules, and the ObjectiveServer
+5. **Registration**: Registered by `simulation.name` in the Registry (one per simulation type)
 
-## Relación con otros componentes
+## Relationship with other components
 
 ```
 SimulationManager  ──calls──►  SimulationExecutor  ──starts──►  Environment Modules
@@ -116,10 +116,10 @@ SimulationManager  ──calls──►  SimulationExecutor  ──starts──�
 ObjectiveServer  ──send──►  SimulationExecutor  ──cast──►  SimulationManager
 ```
 
-El Executor nunca es accedido directamente por la capa web — toda comunicación
-pasa por el SimulationManager.
+The Executor is never accessed directly by the web layer — all communication
+goes through the SimulationManager.
 
-### Señal de Completitud (Objective Found)
+### Completion signal (Objective Found)
 
 ```mermaid
 sequenceDiagram

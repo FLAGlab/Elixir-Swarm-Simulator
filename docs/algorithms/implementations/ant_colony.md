@@ -1,73 +1,73 @@
 # AntColony
 
-**Módulo:** `Simulator.Algorithms.AntColony`
-**Archivo:** `lib/simulator/algorithms/impl/ant_colony.ex`
-**Registro:** `"ant_colony"`
+**Module:** `Simulator.Algorithms.AntColony`
+**File:** `lib/simulator/algorithms/impl/ant_colony.ex`
+**Registry:** `"ant_colony"`
 
-## Descripción
+## Description
 
-Optimización por Colonia de Hormigas adaptada para exploración 2D continua. Implementa un
-sistema de "feromonas negativas": las hormigas depositan feromona en las celdas que visitan,
-marcándolas como "exploradas, sin objetivo aquí". Al elegir un nuevo target, las celdas con
-menos feromona (zonas inexploradas) tienen mayor probabilidad de ser seleccionadas.
+Ant Colony Optimization adapted for continuous 2D exploration. It implements a
+"negative pheromone" system: ants deposit pheromone on the cells they visit,
+marking them as "explored, no objective here". When picking a new target, cells
+with less pheromone (unexplored zones) have a higher probability of being chosen.
 
-Las feromonas se evaporan multiplicativamente cada tick, permitiendo la re-exploración
-de zonas antiguas.
+Pheromones evaporate multiplicatively on every tick, allowing old zones to be
+re-explored.
 
-## Constantes
+## Constants
 
-| Constante | Valor | Descripción |
+| Constant | Value | Description |
 |-----------|-------|-------------|
-| `@step_size` | 5 | Píxeles de avance por tick |
-| `@arrival_threshold` | 3 | Distancia mínima para considerar llegada |
-| `@cell_size` | 20 | Tamaño de celda del grid de feromonas en píxeles |
-| `@evaporation_rate` | 0.02 | Factor de evaporación por tick (2%) |
-| `@deposit_amount` | 1.0 | Cantidad de feromona depositada por visita |
+| `@step_size` | 5 | Pixels advanced per tick |
+| `@arrival_threshold` | 3 | Minimum distance to consider arrival |
+| `@cell_size` | 20 | Pheromone grid cell size in pixels |
+| `@evaporation_rate` | 0.02 | Evaporation factor per tick (2%) |
+| `@deposit_amount` | 1.0 | Pheromone amount deposited per visit |
 
-## Comportamiento
+## Behavior
 
-### Movimiento
-1. **Inicialización:** Si no hay grid, crea uno con `Geometry.build_cell_grid/3` (valor 0.0)
-2. **Evaporación:** Multiplica cada celda por `(1 - @evaporation_rate)`
-3. **Depósito:** Incrementa la celda actual en `@deposit_amount`
-4. **Target:** Si no hay target o llegó al actual, elige uno por selección ponderada
-5. **Movimiento:** Avanza hacia el target con `Geometry.step_toward/4`
-6. **Colisión:** Si el path colisiona, elige nuevo target y se queda
+### Movement
+1. **Initialization:** If there is no grid, builds one with `Geometry.build_cell_grid/3` (value 0.0)
+2. **Evaporation:** Multiplies each cell by `(1 - @evaporation_rate)`
+3. **Deposit:** Increments the current cell by `@deposit_amount`
+4. **Target:** If there is no target, or it has reached the current one, picks a new one via weighted selection
+5. **Movement:** Advances toward the target with `Geometry.step_toward/4`
+6. **Collision:** If the path collides, picks a new target and stays in place
 
-### Selección de target ponderada
-1. Calcula peso de cada celda: `1.0 / (1.0 + nivel_feromona)` — inversamente proporcional
-2. Celdas dentro de obstáculos reciben peso 0.0
-3. Selección por ruleta: random ponderado sobre los pesos
-4. Genera punto random dentro de la celda elegida
-5. Si cae en obstáculo, usa `random_open_point` como fallback
+### Weighted target selection
+1. Computes the weight of each cell: `1.0 / (1.0 + pheromone_level)` — inversely proportional
+2. Cells inside obstacles get weight 0.0
+3. Roulette selection: weighted random over the weights
+4. Generates a random point inside the chosen cell
+5. If it falls inside an obstacle, falls back to `random_open_point`
 
-### Comunicación
-- **Broadcast:** Comparte las celdas con feromona > 0 del grid
-- **Recepción:** Merge por `max` por celda — inherentemente idempotente, sin problema de eco
-  (recibir tu propio grid de vuelta no infla valores porque `max(local, local) == local`)
-- **Tipo de mensaje:** `%{type: :ant_colony, grid: %{{col, row} => float}}`
+### Communication
+- **Broadcast:** Shares the cells with pheromone > 0 from the grid
+- **Reception:** Merge by `max` per cell — inherently idempotent, no echo problem
+  (receiving your own grid back does not inflate values because `max(local, local) == local`)
+- **Message type:** `%{type: :ant_colony, grid: %{{col, row} => float}}`
 
-## Callbacks implementados
+## Implemented callbacks
 
-| Callback | Implementado |
-|----------|:------------:|
-| `compute_step/1` | Si |
-| `get_shared_data/1` | Si |
-| `handle_received_data/3` | Si |
-| `format_state/1` | Si |
+| Callback | Implemented |
+|----------|:-----------:|
+| `compute_step/1` | Yes |
+| `get_shared_data/1` | Yes |
+| `handle_received_data/3` | Yes |
+| `format_state/1` | Yes |
 
-## Estado interno
+## Internal state
 
-| Key | Tipo | Descripción |
+| Key | Type | Description |
 |-----|------|-------------|
-| `:target` | `%{x, y}` | Punto objetivo actual |
-| `:pheromone_grid` | `%{{col, row} => float}` | Grid de niveles de feromona por celda |
+| `:target` | `%{x, y}` | Current target point |
+| `:pheromone_grid` | `%{{col, row} => float}` | Pheromone level grid per cell |
 
 ## format_state
 
-Convierte `:pheromone_grid` a `:pheromone_overlay` (lista de `%{x, y, intensity}` normalizados
-entre 0 y 1) para renderizado en el frontend. Elimina `:pheromone_grid`.
+Converts `:pheromone_grid` into `:pheromone_overlay` (a list of `%{x, y, intensity}`
+normalized between 0 and 1) for frontend rendering. Removes `:pheromone_grid`.
 
-## Dependencias
+## Dependencies
 
 - `Geometry` — step_toward, path_collides?, euclidean_distance, build_cell_grid, position_to_cell, cell_to_point, random_open_point, inside_structure?

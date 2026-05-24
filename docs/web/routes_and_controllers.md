@@ -1,14 +1,14 @@
-# Rutas y Controllers
+# Routes and Controllers
 
-## Principio General
+## General Principle
 
-La capa web es primariamente un **observador** de la simulación. Visualiza lo que ocurre
-pero no controla el comportamiento de los drones. Su única capacidad de intervención es
-enviar comandos de alto nivel (e.g., "apagar N drones") al Manager — nunca manipulación
-directa de agentes.
+The web layer is primarily an **observer** of the simulation. It visualizes what
+happens but does not control the drones' behavior. Its only intervention capability
+is sending high-level commands (e.g., "shut down N drones") to the Manager — never
+direct manipulation of agents.
 
-Toda comunicación con Executors pasa por el SimulationManager. Los controllers y channels
-nunca hablan con Executors directamente.
+All communication with Executors goes through the SimulationManager. Controllers
+and channels never talk to Executors directly.
 
 ## HTTP Routes
 
@@ -29,68 +29,68 @@ GET    /execution_runs/:id      ExecutionRunController.show
 
 ### SimulationController
 
-CRUD estándar para simulaciones. Las simulaciones son records persistidos en SQLite
-que definen los parámetros de una ejecución (tipo, algoritmo, cantidad de agentes, mapa).
+Standard CRUD for simulations. Simulations are records persisted in SQLite that
+define the parameters of an execution (type, algorithm, agent count, map).
 
-**Archivo:** `lib/simulator_web/controllers/simulation_controller.ex`
+**File:** `lib/simulator_web/controllers/simulation_controller.ex`
 
 ### ExecutionController
 
-Renderiza la vista de ejecución en tiempo real. Al cargar `/execution/:id`:
+Renders the real-time execution view. When loading `/execution/:id`:
 
-1. Carga la simulación desde la DB
-2. Resuelve los `MapParams` via `Maps.get_map(sim.map)`
-3. Codifica las estructuras a JSON para el canvas
-4. Renderiza HTML con el elemento canvas dimensionado según `MapParams`
+1. Loads the simulation from the DB
+2. Resolves the `MapParams` via `Maps.get_map(sim.map)`
+3. Encodes the structures to JSON for the canvas
+4. Renders HTML with the canvas element sized according to `MapParams`
 
-**Archivo:** `lib/simulator_web/controllers/execution_controller.ex`
+**File:** `lib/simulator_web/controllers/execution_controller.ex`
 
 ### ExecutionRunController
 
-Renderiza la pantalla de estadísticas de una ejecución completada. Al cargar
+Renders the stats screen of a completed execution. When loading
 `/execution_runs/:id`:
 
-1. Carga el `ExecutionRun` desde la DB
-2. Renderiza HTML con las estadísticas (algoritmo, mapa, objetivo, duración, ticks,
-   dron finder, posición del objetivo, swarm size)
-3. Incluye un botón "Run Again" que redirige a `/execution/:simulation_id`
+1. Loads the `ExecutionRun` from the DB
+2. Renders HTML with the stats (algorithm, map, objective, duration, ticks,
+   finder drone, objective position, swarm size)
+3. Includes a "Run Again" button that redirects to `/execution/:simulation_id`
 
-**Archivo:** `lib/simulator_web/controllers/execution_run_controller.ex`
+**File:** `lib/simulator_web/controllers/execution_run_controller.ex`
 
 ## Database Schema
 
-**Tabla: `simulations`**
+**Table: `simulations`**
 
-| Campo | Tipo | Notas |
+| Field | Type | Notes |
 |-------|------|-------|
 | `id` | integer | Primary key (auto-increment) |
-| `name` | string | Nombre/etiqueta de la simulación |
-| `algorithm` | string | Key del algoritmo (e.g., `"random_walk"`) |
-| `swarm` | integer | Cantidad de agentes |
-| `map` | string | Key del mapa (default: `"clean"`) |
-| `objective` | string | Key del objetivo (default: `"static"`) |
+| `name` | string | Simulation name/label |
+| `algorithm` | string | Algorithm key (e.g., `"random_walk"`) |
+| `swarm` | integer | Number of agents |
+| `map` | string | Map key (default: `"clean"`) |
+| `objective` | string | Objective key (default: `"static"`) |
 | `inserted_at` | utc_datetime | Timestamp |
 | `updated_at` | utc_datetime | Timestamp |
 
-**Tabla: `execution_runs`**
+**Table: `execution_runs`**
 
-| Campo | Tipo | Notas |
+| Field | Type | Notes |
 |-------|------|-------|
 | `id` | integer | Primary key (auto-increment) |
 | `simulation_id` | integer | FK → simulations (on_delete: delete_all) |
-| `algorithm` | string | Algoritmo usado en la ejecución |
-| `map` | string | Mapa usado en la ejecución |
-| `objective` | string | Tipo de objetivo |
-| `swarm_size` | integer | Cantidad de agentes |
-| `duration_ms` | integer | Duración en milisegundos |
-| `ticks` | integer | Cantidad de ticks hasta detección |
-| `finder_drone_id` | integer | ID del dron que encontró el objetivo |
-| `objective_position` | string | Posición del objetivo como JSON string |
-| `status` | string | `"completed"` o `"stopped"` |
+| `algorithm` | string | Algorithm used in the execution |
+| `map` | string | Map used in the execution |
+| `objective` | string | Objective type |
+| `swarm_size` | integer | Number of agents |
+| `duration_ms` | integer | Duration in milliseconds |
+| `ticks` | integer | Number of ticks until detection |
+| `finder_drone_id` | integer | ID of the drone that found the objective |
+| `objective_position` | string | Objective position as a JSON string |
+| `status` | string | `"completed"` or `"stopped"` |
 | `inserted_at` | utc_datetime | Timestamp |
 | `updated_at` | utc_datetime | Timestamp |
 
-**Contexto Ecto:** `Simulator.Simulations` (`lib/simulator/simulations.ex`)
+**Ecto context:** `Simulator.Simulations` (`lib/simulator/simulations.ex`)
 **Schemas:**
 - `Simulator.Simulations.Simulation` (`lib/simulator/simulations/simulation.ex`)
 - `Simulator.Simulations.ExecutionRun` (`lib/simulator/simulations/execution_run.ex`)

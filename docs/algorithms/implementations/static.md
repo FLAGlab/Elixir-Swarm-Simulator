@@ -1,29 +1,29 @@
 # Static
 
-**Módulo:** `Simulator.Algorithms.Static`
-**Archivo:** `lib/simulator/algorithms/impl/static.ex`
-**Registro:** `"static"`
+**Module:** `Simulator.Algorithms.Static`
+**File:** `lib/simulator/algorithms/impl/static.ex`
+**Registry:** `"static"`
 
-## Descripción
+## Description
 
-Algoritmo nulo: el dron permanece inmóvil en su posición inicial. Útil para testing
-y como baseline de comparación.
+Null algorithm: the drone stays motionless at its initial position. Useful for
+testing and as a comparison baseline.
 
-## Comportamiento
+## Behavior
 
-- `compute_step/1` retorna la posición actual sin modificarla
-- No utiliza estado interno
-- No implementa comunicación
+- `compute_step/1` returns the current position without modifying it
+- No internal state
+- No communication
 
-## Callbacks implementados
+## Implemented callbacks
 
-| Callback | Implementado |
-|----------|:------------:|
-| `compute_step/1` | Si |
+| Callback | Implemented |
+|----------|:-----------:|
+| `compute_step/1` | Yes |
 | `get_shared_data/1` | No |
 | `handle_received_data/3` | No |
 | `format_state/1` | No |
 
-## Estado interno
+## Internal state
 
-Ninguno. El estado se retorna sin modificaciones.
+None. The state is returned unchanged.

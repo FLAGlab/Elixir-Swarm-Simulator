@@ -97,6 +97,49 @@ defmodule SimulatorWeb.SimulationController do
     |> redirect(to: ~p"/simulations")
   end
 
+  @batch_max 500
+  @batch_default 30
+
+  def batch(conn, %{"id" => id} = params) do
+    simulation = Simulations.get_simulation!(id)
+    count = parse_count(params["count"])
+
+    cond do
+      count == :invalid ->
+        conn
+        |> put_flash(:error, "Batch count must be a positive integer.")
+        |> redirect(to: ~p"/simulations/#{simulation}")
+
+      count > @batch_max ->
+        conn
+        |> put_flash(:error, "Batch count cannot exceed #{@batch_max}.")
+        |> redirect(to: ~p"/simulations/#{simulation}")
+
+      true ->
+        Task.Supervisor.start_child(Simulator.TaskSupervisor, fn ->
+          Simulator.ExperimentRunner.run(simulation, count)
+        end)
+
+        conn
+        |> put_flash(
+          :info,
+          "Started a batch of #{count} runs. Refresh this page to see them appear."
+        )
+        |> redirect(to: ~p"/simulations/#{simulation}")
+    end
+  end
+
+  defp parse_count(nil), do: @batch_default
+
+  defp parse_count(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {n, ""} when n > 0 -> n
+      _ -> :invalid
+    end
+  end
+
+  defp parse_count(_), do: :invalid
+
   defp get_algorithms do
     Simulator.Algorithms.get_available_algorithms_keys()
   end
